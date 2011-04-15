@@ -1,0 +1,324 @@
+   1               		.file	"print.c"
+   2               	__SREG__ = 0x3f
+   3               	__SP_H__ = 0x3e
+   4               	__SP_L__ = 0x3d
+   5               	__CCP__  = 0x34
+   6               	__tmp_reg__ = 0
+   7               	__zero_reg__ = 1
+  15               	.Ltext0:
+  16               		.section	.text.printNumber,"ax",@progbits
+  17               	.global	printNumber
+  19               	printNumber:
+  20               	.LFB6:
+  21               	.LSM0:
+  22               	.LVL0:
+  23 0000 2F92      		push r2
+  24 0002 3F92      		push r3
+  25 0004 4F92      		push r4
+  26 0006 5F92      		push r5
+  27 0008 6F92      		push r6
+  28 000a 7F92      		push r7
+  29 000c 8F92      		push r8
+  30 000e 9F92      		push r9
+  31 0010 AF92      		push r10
+  32 0012 BF92      		push r11
+  33 0014 CF92      		push r12
+  34 0016 DF92      		push r13
+  35 0018 EF92      		push r14
+  36 001a FF92      		push r15
+  37 001c 0F93      		push r16
+  38 001e 1F93      		push r17
+  39 0020 DF93      		push r29
+  40 0022 CF93      		push r28
+  41 0024 CDB7      		in r28,__SP_L__
+  42 0026 DEB7      		in r29,__SP_H__
+  43 0028 A097      		sbiw r28,32
+  44 002a 0FB6      		in __tmp_reg__,__SREG__
+  45 002c F894      		cli
+  46 002e DEBF      		out __SP_H__,r29
+  47 0030 0FBE      		out __SREG__,__tmp_reg__
+  48 0032 CDBF      		out __SP_L__,r28
+  49               	/* prologue: function */
+  50               	/* frame size = 32 */
+  51 0034 6B01      		movw r12,r22
+  52 0036 7C01      		movw r14,r24
+  53               	.LSM1:
+  54 0038 6115      		cp r22,__zero_reg__
+  55 003a 7105      		cpc r23,__zero_reg__
+  56 003c 8105      		cpc r24,__zero_reg__
+  57 003e 9105      		cpc r25,__zero_reg__
+  58 0040 01F4      		brne .L2
+  59               	.LSM2:
+  60 0042 80E3      		ldi r24,lo8(48)
+  61 0044 0E94 0000 		call usb_debug_putchar
+  62               	.LVL1:
+  63 0048 00C0      		rjmp .L9
+  64               	.LVL2:
+  65               	.L2:
+  66               	.LSM3:
+  67 004a 8824      		clr r8
+  68 004c 9924      		clr r9
+  69 004e 5401      		movw r10,r8
+  70               	.LVL3:
+  71               	.LSM4:
+  72 0050 442E      		mov r4,r20
+  73 0052 5524      		clr r5
+  74 0054 6624      		clr r6
+  75 0056 7724      		clr r7
+  76 0058 1E01      		movw r2,r28
+  77 005a 0894      		sec
+  78 005c 211C      		adc r2,__zero_reg__
+  79 005e 311C      		adc r3,__zero_reg__
+  80               	.L4:
+  81 0060 8101      		movw r16,r2
+  82 0062 080D      		add r16,r8
+  83 0064 191D      		adc r17,r9
+  84 0066 C701      		movw r24,r14
+  85 0068 B601      		movw r22,r12
+  86               	.LVL4:
+  87 006a A301      		movw r20,r6
+  88 006c 9201      		movw r18,r4
+  89 006e 0E94 0000 		call __udivmodsi4
+  90 0072 F801      		movw r30,r16
+  91 0074 6083      		st Z,r22
+  92 0076 0894      		sec
+  93 0078 811C      		adc r8,__zero_reg__
+  94 007a 911C      		adc r9,__zero_reg__
+  95 007c A11C      		adc r10,__zero_reg__
+  96 007e B11C      		adc r11,__zero_reg__
+  97               	.LSM5:
+  98 0080 C701      		movw r24,r14
+  99 0082 B601      		movw r22,r12
+ 100 0084 A301      		movw r20,r6
+ 101 0086 9201      		movw r18,r4
+ 102 0088 0E94 0000 		call __udivmodsi4
+ 103 008c C901      		movw r24,r18
+ 104 008e DA01      		movw r26,r20
+ 105               	.LVL5:
+ 106 0090 6C01      		movw r12,r24
+ 107 0092 7D01      		movw r14,r26
+ 108               	.LSM6:
+ 109 0094 C114      		cp r12,__zero_reg__
+ 110 0096 D104      		cpc r13,__zero_reg__
+ 111 0098 E104      		cpc r14,__zero_reg__
+ 112 009a F104      		cpc r15,__zero_reg__
+ 113 009c 01F4      		brne .L4
+ 114 009e 7101      		movw r14,r2
+ 115 00a0 E80C      		add r14,r8
+ 116 00a2 F91C      		adc r15,r9
+ 117               	.LSM7:
+ 118 00a4 3E01      		movw r6,r28
+ 119 00a6 0894      		sec
+ 120 00a8 611C      		adc r6,__zero_reg__
+ 121 00aa 711C      		adc r7,__zero_reg__
+ 122               	.LSM8:
+ 123 00ac D501      		movw r26,r10
+ 124 00ae C401      		movw r24,r8
+ 125 00b0 0197      		sbiw r24,1
+ 126 00b2 A109      		sbc r26,__zero_reg__
+ 127 00b4 B109      		sbc r27,__zero_reg__
+ 128 00b6 6C01      		movw r12,r24
+ 129               	.LVL6:
+ 130 00b8 C818      		sub r12,r8
+ 131 00ba D908      		sbc r13,r9
+ 132 00bc 00C0      		rjmp .L5
+ 133               	.L8:
+ 134 00be F601      		movw r30,r12
+ 135 00c0 EE0D      		add r30,r14
+ 136 00c2 FF1D      		adc r31,r15
+ 137 00c4 8081      		ld r24,Z
+ 138 00c6 8A30      		cpi r24,lo8(10)
+ 139 00c8 00F4      		brsh .L6
+ 140 00ca 805D      		subi r24,lo8(-(48))
+ 141 00cc 00C0      		rjmp .L7
+ 142               	.L6:
+ 143 00ce 895C      		subi r24,lo8(-(55))
+ 144               	.L7:
+ 145 00d0 0E94 0000 		call usb_debug_putchar
+ 146 00d4 0894      		sec
+ 147 00d6 E108      		sbc r14,__zero_reg__
+ 148 00d8 F108      		sbc r15,__zero_reg__
+ 149               	.L5:
+ 150               	.LSM9:
+ 151 00da 6E14      		cp r6,r14
+ 152 00dc 7F04      		cpc r7,r15
+ 153 00de 01F4      		brne .L8
+ 154               	.LVL7:
+ 155               	.L9:
+ 156               	/* epilogue start */
+ 157               	.LSM10:
+ 158 00e0 A096      		adiw r28,32
+ 159 00e2 0FB6      		in __tmp_reg__,__SREG__
+ 160 00e4 F894      		cli
+ 161 00e6 DEBF      		out __SP_H__,r29
+ 162 00e8 0FBE      		out __SREG__,__tmp_reg__
+ 163 00ea CDBF      		out __SP_L__,r28
+ 164 00ec CF91      		pop r28
+ 165 00ee DF91      		pop r29
+ 166 00f0 1F91      		pop r17
+ 167 00f2 0F91      		pop r16
+ 168 00f4 FF90      		pop r15
+ 169 00f6 EF90      		pop r14
+ 170 00f8 DF90      		pop r13
+ 171 00fa CF90      		pop r12
+ 172               	.LVL8:
+ 173 00fc BF90      		pop r11
+ 174 00fe AF90      		pop r10
+ 175 0100 9F90      		pop r9
+ 176 0102 8F90      		pop r8
+ 177               	.LVL9:
+ 178 0104 7F90      		pop r7
+ 179 0106 6F90      		pop r6
+ 180 0108 5F90      		pop r5
+ 181 010a 4F90      		pop r4
+ 182 010c 3F90      		pop r3
+ 183 010e 2F90      		pop r2
+ 184 0110 0895      		ret
+ 185               	.LFE6:
+ 187               		.section	.text.phex1,"ax",@progbits
+ 188               	.global	phex1
+ 190               	phex1:
+ 191               	.LFB3:
+ 192               	.LSM11:
+ 193               	.LVL10:
+ 194               	/* prologue: function */
+ 195               	/* frame size = 0 */
+ 196 0000 982F      		mov r25,r24
+ 197               	.LSM12:
+ 198 0002 8A30      		cpi r24,lo8(10)
+ 199 0004 00F0      		brlo .L12
+ 200 0006 87E3      		ldi r24,lo8(55)
+ 201               	.LVL11:
+ 202 0008 00C0      		rjmp .L13
+ 203               	.LVL12:
+ 204               	.L12:
+ 205 000a 80E3      		ldi r24,lo8(48)
+ 206               	.LVL13:
+ 207               	.L13:
+ 208 000c 890F      		add r24,r25
+ 209 000e 0E94 0000 		call usb_debug_putchar
+ 210               	.LVL14:
+ 211               	/* epilogue start */
+ 212               	.LSM13:
+ 213 0012 0895      		ret
+ 214               	.LFE3:
+ 216               		.section	.text.phex,"ax",@progbits
+ 217               	.global	phex
+ 219               	phex:
+ 220               	.LFB4:
+ 221               	.LSM14:
+ 222               	.LVL15:
+ 223 0000 1F93      		push r17
+ 224               	/* prologue: function */
+ 225               	/* frame size = 0 */
+ 226 0002 182F      		mov r17,r24
+ 227               	.LSM15:
+ 228 0004 8295      		swap r24
+ 229               	.LVL16:
+ 230 0006 8F70      		andi r24,lo8(15)
+ 231 0008 0E94 0000 		call phex1
+ 232               	.LSM16:
+ 233 000c 812F      		mov r24,r17
+ 234 000e 8F70      		andi r24,lo8(15)
+ 235 0010 0E94 0000 		call phex1
+ 236               	/* epilogue start */
+ 237               	.LSM17:
+ 238 0014 1F91      		pop r17
+ 239               	.LVL17:
+ 240 0016 0895      		ret
+ 241               	.LFE4:
+ 243               		.section	.text.phex16,"ax",@progbits
+ 244               	.global	phex16
+ 246               	phex16:
+ 247               	.LFB5:
+ 248               	.LSM18:
+ 249               	.LVL18:
+ 250 0000 1F93      		push r17
+ 251               	/* prologue: function */
+ 252               	/* frame size = 0 */
+ 253 0002 182F      		mov r17,r24
+ 254               	.LSM19:
+ 255 0004 892F      		mov r24,r25
+ 256               	.LVL19:
+ 257 0006 0E94 0000 		call phex
+ 258               	.LVL20:
+ 259               	.LSM20:
+ 260 000a 812F      		mov r24,r17
+ 261 000c 0E94 0000 		call phex
+ 262               	/* epilogue start */
+ 263               	.LSM21:
+ 264 0010 1F91      		pop r17
+ 265               	.LVL21:
+ 266 0012 0895      		ret
+ 267               	.LFE5:
+ 269               		.section	.text.print_P,"ax",@progbits
+ 270               	.global	print_P
+ 272               	print_P:
+ 273               	.LFB2:
+ 274               	.LSM22:
+ 275               	.LVL22:
+ 276 0000 1F93      		push r17
+ 277 0002 CF93      		push r28
+ 278 0004 DF93      		push r29
+ 279               	/* prologue: function */
+ 280               	/* frame size = 0 */
+ 281 0006 EC01      		movw r28,r24
+ 282               	.LVL23:
+ 283               	.L22:
+ 284               	.LSM23:
+ 285 0008 FE01      		movw r30,r28
+ 286               	.LVL24:
+ 287               	.LBB2:
+ 288               	.LSM24:
+ 289 000a 2196      		adiw r28,1
+ 290               	/* #APP */
+ 291               	 ;  39 "print.c" 1
+ 292 000c 1491      		lpm r17, Z
+ 293               		
+ 294               	 ;  0 "" 2
+ 295               	/* #NOAPP */
+ 296               	.LBE2:
+ 297               	.LSM25:
+ 298 000e 1123      		tst r17
+ 299 0010 01F0      		breq .L23
+ 300               	.LSM26:
+ 301 0012 1A30      		cpi r17,lo8(10)
+ 302 0014 01F4      		brne .L21
+ 303 0016 8DE0      		ldi r24,lo8(13)
+ 304 0018 0E94 0000 		call usb_debug_putchar
+ 305               	.LVL25:
+ 306               	.L21:
+ 307               	.LSM27:
+ 308 001c 812F      		mov r24,r17
+ 309 001e 0E94 0000 		call usb_debug_putchar
+ 310               	.LVL26:
+ 311 0022 00C0      		rjmp .L22
+ 312               	.LVL27:
+ 313               	.L23:
+ 314               	/* epilogue start */
+ 315               	.LSM28:
+ 316 0024 DF91      		pop r29
+ 317 0026 CF91      		pop r28
+ 318               	.LVL28:
+ 319 0028 1F91      		pop r17
+ 320               	.LVL29:
+ 321 002a 0895      		ret
+ 322               	.LFE2:
+ 380               	.Letext0:
+DEFINED SYMBOLS
+                            *ABS*:00000000 print.c
+/var/folders/a6/a6nNRuZhEuaegpglpBAJdU+++TI/-Tmp-//ccK3N8gi.s:2      *ABS*:0000003f __SREG__
+/var/folders/a6/a6nNRuZhEuaegpglpBAJdU+++TI/-Tmp-//ccK3N8gi.s:3      *ABS*:0000003e __SP_H__
+/var/folders/a6/a6nNRuZhEuaegpglpBAJdU+++TI/-Tmp-//ccK3N8gi.s:4      *ABS*:0000003d __SP_L__
+/var/folders/a6/a6nNRuZhEuaegpglpBAJdU+++TI/-Tmp-//ccK3N8gi.s:5      *ABS*:00000034 __CCP__
+/var/folders/a6/a6nNRuZhEuaegpglpBAJdU+++TI/-Tmp-//ccK3N8gi.s:6      *ABS*:00000000 __tmp_reg__
+/var/folders/a6/a6nNRuZhEuaegpglpBAJdU+++TI/-Tmp-//ccK3N8gi.s:7      *ABS*:00000001 __zero_reg__
+/var/folders/a6/a6nNRuZhEuaegpglpBAJdU+++TI/-Tmp-//ccK3N8gi.s:19     .text.printNumber:00000000 printNumber
+/var/folders/a6/a6nNRuZhEuaegpglpBAJdU+++TI/-Tmp-//ccK3N8gi.s:190    .text.phex1:00000000 phex1
+/var/folders/a6/a6nNRuZhEuaegpglpBAJdU+++TI/-Tmp-//ccK3N8gi.s:219    .text.phex:00000000 phex
+/var/folders/a6/a6nNRuZhEuaegpglpBAJdU+++TI/-Tmp-//ccK3N8gi.s:246    .text.phex16:00000000 phex16
+/var/folders/a6/a6nNRuZhEuaegpglpBAJdU+++TI/-Tmp-//ccK3N8gi.s:272    .text.print_P:00000000 print_P
+
+UNDEFINED SYMBOLS
+usb_debug_putchar
+__udivmodsi4

@@ -1,0 +1,159 @@
+   1               		.file	"pwm.c"
+   2               	__SREG__ = 0x3f
+   3               	__SP_H__ = 0x3e
+   4               	__SP_L__ = 0x3d
+   5               	__CCP__  = 0x34
+   6               	__tmp_reg__ = 0
+   7               	__zero_reg__ = 1
+  15               	.Ltext0:
+  16               		.section	.text.pwm_init,"ax",@progbits
+  17               	.global	pwm_init
+  19               	pwm_init:
+  20               	.LFB2:
+  21               	.LSM0:
+  22               	/* prologue: function */
+  23               	/* frame size = 0 */
+  24               	.LSM1:
+  25 0000 92EA      		ldi r25,lo8(-94)
+  26 0002 9093 8000 		sts 128,r25
+  27               	.LSM2:
+  28 0006 8AE1      		ldi r24,lo8(26)
+  29 0008 8093 8100 		sts 129,r24
+  30               	.LSM3:
+  31 000c 9093 9000 		sts 144,r25
+  32               	.LSM4:
+  33 0010 8093 9100 		sts 145,r24
+  34               	.LSM5:
+  35 0014 80E4      		ldi r24,lo8(-25536)
+  36 0016 9CE9      		ldi r25,hi8(-25536)
+  37 0018 9093 8700 		sts (134)+1,r25
+  38 001c 8093 8600 		sts 134,r24
+  39               	.LSM6:
+  40 0020 9093 9700 		sts (150)+1,r25
+  41 0024 8093 9600 		sts 150,r24
+  42               	.LSM7:
+  43 0028 259A      		sbi 36-32,5
+  44               	.LSM8:
+  45 002a 269A      		sbi 36-32,6
+  46               	.LSM9:
+  47 002c 3D9A      		sbi 39-32,5
+  48               	.LSM10:
+  49 002e 3E9A      		sbi 39-32,6
+  50               	.LSM11:
+  51 0030 88E9      		ldi r24,lo8(2200)
+  52 0032 98E0      		ldi r25,hi8(2200)
+  53 0034 9093 8900 		sts (136)+1,r25
+  54 0038 8093 8800 		sts 136,r24
+  55               	.LSM12:
+  56 003c 9093 8B00 		sts (138)+1,r25
+  57 0040 8093 8A00 		sts 138,r24
+  58               	.LSM13:
+  59 0044 9093 9900 		sts (152)+1,r25
+  60 0048 8093 9800 		sts 152,r24
+  61               	.LSM14:
+  62 004c 9093 9B00 		sts (154)+1,r25
+  63 0050 8093 9A00 		sts 154,r24
+  64               	/* epilogue start */
+  65               	.LSM15:
+  66 0054 0895      		ret
+  67               	.LFE2:
+  69               		.section	.text.write_servo,"ax",@progbits
+  70               	.global	write_servo
+  72               	write_servo:
+  73               	.LFB3:
+  74               	.LSM16:
+  75               	.LVL0:
+  76               	/* prologue: function */
+  77               	/* frame size = 0 */
+  78               	.LSM17:
+  79 0000 6055      		subi r22,lo8(-(1200))
+  80 0002 7B4F      		sbci r23,hi8(-(1200))
+  81               	.LVL1:
+  82               	.LSM18:
+  83 0004 9EE0      		ldi r25,hi8(3801)
+  84 0006 693D      		cpi r22,lo8(3801)
+  85 0008 7907      		cpc r23,r25
+  86 000a 04F0      		brlt .L4
+  87 000c 68ED      		ldi r22,lo8(3800)
+  88 000e 7EE0      		ldi r23,hi8(3800)
+  89 0010 00C0      		rjmp .L5
+  90               	.L4:
+  91               	.LSM19:
+  92 0012 98E0      		ldi r25,hi8(2200)
+  93 0014 6839      		cpi r22,lo8(2200)
+  94 0016 7907      		cpc r23,r25
+  95 0018 04F4      		brge .L5
+  96 001a 68E9      		ldi r22,lo8(2200)
+  97 001c 78E0      		ldi r23,hi8(2200)
+  98               	.L5:
+  99               	.LSM20:
+ 100 001e 8130      		cpi r24,lo8(1)
+ 101 0020 01F0      		breq .L8
+ 102 0022 8130      		cpi r24,lo8(1)
+ 103 0024 00F0      		brlo .L7
+ 104 0026 8230      		cpi r24,lo8(2)
+ 105 0028 01F0      		breq .L9
+ 106 002a 8330      		cpi r24,lo8(3)
+ 107 002c 01F4      		brne .L11
+ 108 002e 00C0      		rjmp .L12
+ 109               	.L7:
+ 110               	.LSM21:
+ 111 0030 7093 8900 		sts (136)+1,r23
+ 112 0034 6093 8800 		sts 136,r22
+ 113 0038 0895      		ret
+ 114               	.L8:
+ 115               	.LSM22:
+ 116 003a 7093 8B00 		sts (138)+1,r23
+ 117 003e 6093 8A00 		sts 138,r22
+ 118 0042 0895      		ret
+ 119               	.L9:
+ 120               	.LSM23:
+ 121 0044 7093 9900 		sts (152)+1,r23
+ 122 0048 6093 9800 		sts 152,r22
+ 123 004c 0895      		ret
+ 124               	.L12:
+ 125               	.LSM24:
+ 126 004e 7093 9B00 		sts (154)+1,r23
+ 127 0052 6093 9A00 		sts 154,r22
+ 128               	.L11:
+ 129 0056 0895      		ret
+ 130               	.LFE3:
+ 132               		.section	.text.write_motors_zero,"ax",@progbits
+ 133               	.global	write_motors_zero
+ 135               	write_motors_zero:
+ 136               	.LFB4:
+ 137               	.LSM25:
+ 138               	/* prologue: function */
+ 139               	/* frame size = 0 */
+ 140               	.LSM26:
+ 141 0000 88E9      		ldi r24,lo8(2200)
+ 142 0002 98E0      		ldi r25,hi8(2200)
+ 143 0004 9093 8900 		sts (136)+1,r25
+ 144 0008 8093 8800 		sts 136,r24
+ 145               	.LSM27:
+ 146 000c 9093 8B00 		sts (138)+1,r25
+ 147 0010 8093 8A00 		sts 138,r24
+ 148               	.LSM28:
+ 149 0014 9093 9900 		sts (152)+1,r25
+ 150 0018 8093 9800 		sts 152,r24
+ 151               	.LSM29:
+ 152 001c 9093 9B00 		sts (154)+1,r25
+ 153 0020 8093 9A00 		sts 154,r24
+ 154               	/* epilogue start */
+ 155               	.LSM30:
+ 156 0024 0895      		ret
+ 157               	.LFE4:
+ 199               	.Letext0:
+DEFINED SYMBOLS
+                            *ABS*:00000000 pwm.c
+/var/folders/a6/a6nNRuZhEuaegpglpBAJdU+++TI/-Tmp-//ccIw8y8M.s:2      *ABS*:0000003f __SREG__
+/var/folders/a6/a6nNRuZhEuaegpglpBAJdU+++TI/-Tmp-//ccIw8y8M.s:3      *ABS*:0000003e __SP_H__
+/var/folders/a6/a6nNRuZhEuaegpglpBAJdU+++TI/-Tmp-//ccIw8y8M.s:4      *ABS*:0000003d __SP_L__
+/var/folders/a6/a6nNRuZhEuaegpglpBAJdU+++TI/-Tmp-//ccIw8y8M.s:5      *ABS*:00000034 __CCP__
+/var/folders/a6/a6nNRuZhEuaegpglpBAJdU+++TI/-Tmp-//ccIw8y8M.s:6      *ABS*:00000000 __tmp_reg__
+/var/folders/a6/a6nNRuZhEuaegpglpBAJdU+++TI/-Tmp-//ccIw8y8M.s:7      *ABS*:00000001 __zero_reg__
+/var/folders/a6/a6nNRuZhEuaegpglpBAJdU+++TI/-Tmp-//ccIw8y8M.s:19     .text.pwm_init:00000000 pwm_init
+/var/folders/a6/a6nNRuZhEuaegpglpBAJdU+++TI/-Tmp-//ccIw8y8M.s:72     .text.write_servo:00000000 write_servo
+/var/folders/a6/a6nNRuZhEuaegpglpBAJdU+++TI/-Tmp-//ccIw8y8M.s:135    .text.write_motors_zero:00000000 write_motors_zero
+
+NO UNDEFINED SYMBOLS

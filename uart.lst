@@ -1,0 +1,325 @@
+   1               		.file	"uart.c"
+   2               	__SREG__ = 0x3f
+   3               	__SP_H__ = 0x3e
+   4               	__SP_L__ = 0x3d
+   5               	__CCP__  = 0x34
+   6               	__tmp_reg__ = 0
+   7               	__zero_reg__ = 1
+  15               	.Ltext0:
+  16               		.section	.text.uart_init,"ax",@progbits
+  17               	.global	uart_init
+  19               	uart_init:
+  20               	.LFB2:
+  21               	.LSM0:
+  22               	.LVL0:
+  23               	/* prologue: function */
+  24               	/* frame size = 0 */
+  25 0000 9B01      		movw r18,r22
+  26 0002 AC01      		movw r20,r24
+  27               	.LSM1:
+  28               	/* #APP */
+  29               	 ;  47 "uart.c" 1
+  30 0004 F894      		cli
+  31               	 ;  0 "" 2
+  32               	.LSM2:
+  33               	/* #NOAPP */
+  34 0006 60E0      		ldi r22,lo8(4000000)
+  35 0008 79E0      		ldi r23,hi8(4000000)
+  36 000a 8DE3      		ldi r24,hlo8(4000000)
+  37 000c 90E0      		ldi r25,hhi8(4000000)
+  38               	.LVL1:
+  39 000e 0E94 0000 		call __udivmodsi4
+  40               	.LVL2:
+  41 0012 2150      		subi r18,lo8(-(-1))
+  42 0014 3040      		sbci r19,hi8(-(-1))
+  43 0016 4040      		sbci r20,hlo8(-(-1))
+  44 0018 5040      		sbci r21,hhi8(-(-1))
+  45 001a 5695      		lsr r21
+  46 001c 4795      		ror r20
+  47 001e 3795      		ror r19
+  48 0020 2795      		ror r18
+  49 0022 3093 CD00 		sts (204)+1,r19
+  50 0026 2093 CC00 		sts 204,r18
+  51               	.LSM3:
+  52 002a 82E0      		ldi r24,lo8(2)
+  53 002c 8093 C800 		sts 200,r24
+  54               	.LSM4:
+  55 0030 88E9      		ldi r24,lo8(-104)
+  56 0032 8093 C900 		sts 201,r24
+  57               	.LSM5:
+  58 0036 86E0      		ldi r24,lo8(6)
+  59 0038 8093 CA00 		sts 202,r24
+  60               	.LSM6:
+  61 003c 1092 0000 		sts tx_buffer_tail,__zero_reg__
+  62 0040 8091 0000 		lds r24,tx_buffer_tail
+  63 0044 8093 0000 		sts tx_buffer_head,r24
+  64               	.LSM7:
+  65 0048 1092 0000 		sts rx_buffer_tail,__zero_reg__
+  66 004c 8091 0000 		lds r24,rx_buffer_tail
+  67 0050 8093 0000 		sts rx_buffer_head,r24
+  68               	.LSM8:
+  69               	/* #APP */
+  70               	 ;  54 "uart.c" 1
+  71 0054 7894      		sei
+  72               	 ;  0 "" 2
+  73               	/* epilogue start */
+  74               	.LSM9:
+  75               	/* #NOAPP */
+  76 0056 0895      		ret
+  77               	.LFE2:
+  79               		.section	.text.uart_putchar,"ax",@progbits
+  80               	.global	uart_putchar
+  82               	uart_putchar:
+  83               	.LFB3:
+  84               	.LSM10:
+  85               	.LVL3:
+  86               	/* prologue: function */
+  87               	/* frame size = 0 */
+  88 0000 282F      		mov r18,r24
+  89               	.LSM11:
+  90 0002 9091 0000 		lds r25,tx_buffer_head
+  91               	.LVL4:
+  92 0006 9F5F      		subi r25,lo8(-(1))
+  93               	.LSM12:
+  94 0008 9832      		cpi r25,lo8(40)
+  95 000a 00F0      		brlo .L6
+  96               	.LVL5:
+  97 000c 90E0      		ldi r25,lo8(0)
+  98               	.L6:
+  99               	.LSM13:
+ 100 000e 8091 0000 		lds r24,tx_buffer_tail
+ 101 0012 8917      		cp r24,r25
+ 102 0014 01F0      		breq .L6
+ 103               	.LSM14:
+ 104 0016 E92F      		mov r30,r25
+ 105 0018 F0E0      		ldi r31,lo8(0)
+ 106 001a E050      		subi r30,lo8(-(tx_buffer))
+ 107 001c F040      		sbci r31,hi8(-(tx_buffer))
+ 108 001e 2083      		st Z,r18
+ 109               	.LSM15:
+ 110 0020 9093 0000 		sts tx_buffer_head,r25
+ 111               	.LSM16:
+ 112 0024 88EB      		ldi r24,lo8(-72)
+ 113 0026 8093 C900 		sts 201,r24
+ 114               	/* epilogue start */
+ 115               	.LSM17:
+ 116 002a 0895      		ret
+ 117               	.LFE3:
+ 119               		.section	.text.uart_getchar,"ax",@progbits
+ 120               	.global	uart_getchar
+ 122               	uart_getchar:
+ 123               	.LFB4:
+ 124               	.LSM18:
+ 125               	/* prologue: function */
+ 126               	/* frame size = 0 */
+ 127               	.L9:
+ 128               	.LSM19:
+ 129 0000 9091 0000 		lds r25,rx_buffer_head
+ 130 0004 8091 0000 		lds r24,rx_buffer_tail
+ 131 0008 9817      		cp r25,r24
+ 132 000a 01F0      		breq .L9
+ 133               	.LSM20:
+ 134 000c 9091 0000 		lds r25,rx_buffer_tail
+ 135               	.LVL6:
+ 136 0010 9F5F      		subi r25,lo8(-(1))
+ 137               	.LSM21:
+ 138 0012 9034      		cpi r25,lo8(64)
+ 139 0014 00F0      		brlo .L10
+ 140 0016 90E0      		ldi r25,lo8(0)
+ 141               	.L10:
+ 142               	.LSM22:
+ 143 0018 E92F      		mov r30,r25
+ 144 001a F0E0      		ldi r31,lo8(0)
+ 145 001c E050      		subi r30,lo8(-(rx_buffer))
+ 146 001e F040      		sbci r31,hi8(-(rx_buffer))
+ 147 0020 8081      		ld r24,Z
+ 148               	.LVL7:
+ 149               	.LSM23:
+ 150 0022 9093 0000 		sts rx_buffer_tail,r25
+ 151               	.LVL8:
+ 152               	/* epilogue start */
+ 153               	.LSM24:
+ 154 0026 0895      		ret
+ 155               	.LFE4:
+ 157               		.section	.text.uart_available,"ax",@progbits
+ 158               	.global	uart_available
+ 160               	uart_available:
+ 161               	.LFB5:
+ 162               	.LSM25:
+ 163               	/* prologue: function */
+ 164               	/* frame size = 0 */
+ 165               	.LSM26:
+ 166 0000 8091 0000 		lds r24,rx_buffer_head
+ 167               	.LVL9:
+ 168               	.LSM27:
+ 169 0004 9091 0000 		lds r25,rx_buffer_tail
+ 170               	.LVL10:
+ 171               	.LSM28:
+ 172 0008 8917      		cp r24,r25
+ 173 000a 00F0      		brlo .L14
+ 174 000c 891B      		sub r24,r25
+ 175               	.LVL11:
+ 176 000e 0895      		ret
+ 177               	.LVL12:
+ 178               	.L14:
+ 179               	.LSM29:
+ 180 0010 805C      		subi r24,lo8(-(64))
+ 181               	.LVL13:
+ 182 0012 891B      		sub r24,r25
+ 183               	.LSM30:
+ 184 0014 0895      		ret
+ 185               	.LFE5:
+ 187               		.section	.text.__vector_26,"ax",@progbits
+ 188               	.global	__vector_26
+ 190               	__vector_26:
+ 191               	.LFB6:
+ 192               	.LSM31:
+ 193 0000 1F92      		push __zero_reg__
+ 194 0002 0F92      		push r0
+ 195 0004 0FB6      		in r0,__SREG__
+ 196 0006 0F92      		push r0
+ 197 0008 0BB6      		in r0,91-32
+ 198 000a 0F92      		push r0
+ 199 000c 1124      		clr __zero_reg__
+ 200 000e 8F93      		push r24
+ 201 0010 9F93      		push r25
+ 202 0012 EF93      		push r30
+ 203 0014 FF93      		push r31
+ 204               	/* prologue: Signal */
+ 205               	/* frame size = 0 */
+ 206               	.LSM32:
+ 207 0016 9091 0000 		lds r25,tx_buffer_head
+ 208 001a 8091 0000 		lds r24,tx_buffer_tail
+ 209 001e 9817      		cp r25,r24
+ 210 0020 01F4      		brne .L18
+ 211               	.LSM33:
+ 212 0022 88E9      		ldi r24,lo8(-104)
+ 213 0024 8093 C900 		sts 201,r24
+ 214 0028 00C0      		rjmp .L21
+ 215               	.L18:
+ 216               	.LSM34:
+ 217 002a 9091 0000 		lds r25,tx_buffer_tail
+ 218               	.LVL14:
+ 219 002e 9F5F      		subi r25,lo8(-(1))
+ 220               	.LSM35:
+ 221 0030 9832      		cpi r25,lo8(40)
+ 222 0032 00F0      		brlo .L20
+ 223 0034 90E0      		ldi r25,lo8(0)
+ 224               	.L20:
+ 225               	.LSM36:
+ 226 0036 E92F      		mov r30,r25
+ 227 0038 F0E0      		ldi r31,lo8(0)
+ 228 003a E050      		subi r30,lo8(-(tx_buffer))
+ 229 003c F040      		sbci r31,hi8(-(tx_buffer))
+ 230 003e 8081      		ld r24,Z
+ 231 0040 8093 CE00 		sts 206,r24
+ 232               	.LSM37:
+ 233 0044 9093 0000 		sts tx_buffer_tail,r25
+ 234               	.L21:
+ 235               	/* epilogue start */
+ 236               	.LSM38:
+ 237 0048 FF91      		pop r31
+ 238 004a EF91      		pop r30
+ 239 004c 9F91      		pop r25
+ 240               	.LVL15:
+ 241 004e 8F91      		pop r24
+ 242 0050 0F90      		pop r0
+ 243 0052 0BBE      		out 91-32,r0
+ 244 0054 0F90      		pop r0
+ 245 0056 0FBE      		out __SREG__,r0
+ 246 0058 0F90      		pop r0
+ 247 005a 1F90      		pop __zero_reg__
+ 248 005c 1895      		reti
+ 249               	.LFE6:
+ 251               		.section	.text.__vector_25,"ax",@progbits
+ 252               	.global	__vector_25
+ 254               	__vector_25:
+ 255               	.LFB7:
+ 256               	.LSM39:
+ 257 0000 1F92      		push __zero_reg__
+ 258 0002 0F92      		push r0
+ 259 0004 0FB6      		in r0,__SREG__
+ 260 0006 0F92      		push r0
+ 261 0008 0BB6      		in r0,91-32
+ 262 000a 0F92      		push r0
+ 263 000c 1124      		clr __zero_reg__
+ 264 000e 2F93      		push r18
+ 265 0010 8F93      		push r24
+ 266 0012 9F93      		push r25
+ 267 0014 EF93      		push r30
+ 268 0016 FF93      		push r31
+ 269               	/* prologue: Signal */
+ 270               	/* frame size = 0 */
+ 271               	.LSM40:
+ 272 0018 2091 CE00 		lds r18,206
+ 273               	.LVL16:
+ 274               	.LSM41:
+ 275 001c 9091 0000 		lds r25,rx_buffer_head
+ 276               	.LVL17:
+ 277 0020 9F5F      		subi r25,lo8(-(1))
+ 278               	.LSM42:
+ 279 0022 9034      		cpi r25,lo8(64)
+ 280 0024 00F0      		brlo .L23
+ 281 0026 90E0      		ldi r25,lo8(0)
+ 282               	.L23:
+ 283               	.LSM43:
+ 284 0028 8091 0000 		lds r24,rx_buffer_tail
+ 285 002c 9817      		cp r25,r24
+ 286 002e 01F0      		breq .L25
+ 287               	.LSM44:
+ 288 0030 E92F      		mov r30,r25
+ 289 0032 F0E0      		ldi r31,lo8(0)
+ 290 0034 E050      		subi r30,lo8(-(rx_buffer))
+ 291 0036 F040      		sbci r31,hi8(-(rx_buffer))
+ 292 0038 2083      		st Z,r18
+ 293               	.LSM45:
+ 294 003a 9093 0000 		sts rx_buffer_head,r25
+ 295               	.L25:
+ 296               	/* epilogue start */
+ 297               	.LSM46:
+ 298 003e FF91      		pop r31
+ 299 0040 EF91      		pop r30
+ 300 0042 9F91      		pop r25
+ 301               	.LVL18:
+ 302 0044 8F91      		pop r24
+ 303 0046 2F91      		pop r18
+ 304               	.LVL19:
+ 305 0048 0F90      		pop r0
+ 306 004a 0BBE      		out 91-32,r0
+ 307 004c 0F90      		pop r0
+ 308 004e 0FBE      		out __SREG__,r0
+ 309 0050 0F90      		pop r0
+ 310 0052 1F90      		pop __zero_reg__
+ 311 0054 1895      		reti
+ 312               	.LFE7:
+ 314               		.lcomm tx_buffer,40
+ 315               		.lcomm tx_buffer_head,1
+ 316               		.lcomm tx_buffer_tail,1
+ 317               		.lcomm rx_buffer,64
+ 318               		.lcomm rx_buffer_head,1
+ 319               		.lcomm rx_buffer_tail,1
+ 384               	.Letext0:
+DEFINED SYMBOLS
+                            *ABS*:00000000 uart.c
+/var/folders/a6/a6nNRuZhEuaegpglpBAJdU+++TI/-Tmp-//ccXgFg5z.s:2      *ABS*:0000003f __SREG__
+/var/folders/a6/a6nNRuZhEuaegpglpBAJdU+++TI/-Tmp-//ccXgFg5z.s:3      *ABS*:0000003e __SP_H__
+/var/folders/a6/a6nNRuZhEuaegpglpBAJdU+++TI/-Tmp-//ccXgFg5z.s:4      *ABS*:0000003d __SP_L__
+/var/folders/a6/a6nNRuZhEuaegpglpBAJdU+++TI/-Tmp-//ccXgFg5z.s:5      *ABS*:00000034 __CCP__
+/var/folders/a6/a6nNRuZhEuaegpglpBAJdU+++TI/-Tmp-//ccXgFg5z.s:6      *ABS*:00000000 __tmp_reg__
+/var/folders/a6/a6nNRuZhEuaegpglpBAJdU+++TI/-Tmp-//ccXgFg5z.s:7      *ABS*:00000001 __zero_reg__
+/var/folders/a6/a6nNRuZhEuaegpglpBAJdU+++TI/-Tmp-//ccXgFg5z.s:19     .text.uart_init:00000000 uart_init
+/var/folders/a6/a6nNRuZhEuaegpglpBAJdU+++TI/-Tmp-//ccXgFg5z.s:315    .bss:00000029 tx_buffer_tail
+/var/folders/a6/a6nNRuZhEuaegpglpBAJdU+++TI/-Tmp-//ccXgFg5z.s:314    .bss:00000028 tx_buffer_head
+/var/folders/a6/a6nNRuZhEuaegpglpBAJdU+++TI/-Tmp-//ccXgFg5z.s:318    .bss:0000006b rx_buffer_tail
+/var/folders/a6/a6nNRuZhEuaegpglpBAJdU+++TI/-Tmp-//ccXgFg5z.s:317    .bss:0000006a rx_buffer_head
+/var/folders/a6/a6nNRuZhEuaegpglpBAJdU+++TI/-Tmp-//ccXgFg5z.s:82     .text.uart_putchar:00000000 uart_putchar
+                             .bss:00000000 tx_buffer
+/var/folders/a6/a6nNRuZhEuaegpglpBAJdU+++TI/-Tmp-//ccXgFg5z.s:122    .text.uart_getchar:00000000 uart_getchar
+/var/folders/a6/a6nNRuZhEuaegpglpBAJdU+++TI/-Tmp-//ccXgFg5z.s:316    .bss:0000002a rx_buffer
+/var/folders/a6/a6nNRuZhEuaegpglpBAJdU+++TI/-Tmp-//ccXgFg5z.s:160    .text.uart_available:00000000 uart_available
+/var/folders/a6/a6nNRuZhEuaegpglpBAJdU+++TI/-Tmp-//ccXgFg5z.s:190    .text.__vector_26:00000000 __vector_26
+/var/folders/a6/a6nNRuZhEuaegpglpBAJdU+++TI/-Tmp-//ccXgFg5z.s:254    .text.__vector_25:00000000 __vector_25
+
+UNDEFINED SYMBOLS
+__udivmodsi4
+__do_clear_bss
