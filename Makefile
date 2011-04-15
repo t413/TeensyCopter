@@ -51,6 +51,7 @@ SRC = \
     pwm.c \
     ser_pkt.c \
     uart.c \
+    twi.c \
     analog.c 
 
 # MCU name, you MUST set this to match the board you are using

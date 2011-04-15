@@ -27,7 +27,7 @@ typedef struct {
     
     unsigned char armed;
     unsigned char telem_mode;
-    int tx_throttle, tx_yaw, tx_pitch, tx_roll;
+    int16_t tx_throttle, tx_yaw, tx_pitch, tx_roll;
     unsigned int command_used_number;
     unsigned char please_update_sensors;
     unsigned int user_feedback;
@@ -38,8 +38,8 @@ typedef struct {
         PID * pid_yaw;
         uint8_t flying_mode; //X_MODE or PLUS_MODE
         uint8_t led_mode;
-        uint16_t pitch_roll_tx_scale;
-        uint16_t yaw_tx_scale;
+        int16_t pitch_roll_tx_scale;
+        int16_t yaw_tx_scale;
     } config;
     
 } FlightData;

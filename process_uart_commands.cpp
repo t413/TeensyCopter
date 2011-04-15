@@ -18,11 +18,12 @@
 void process_packet( uint8_t * packet, FlightData * fd ) {
     if (packet[2] == USER_CONTROL){
         if (packet[3] == FULL_REMOTE){
-            FourU16 recieved = decode_4xint16(packet+5);
-            fd->tx_roll  =   (recieved.d0-1500)*4/fd->config.pitch_roll_tx_scale+1500;
-            fd->tx_pitch = -(recieved.d1-1500)*4/fd->config.pitch_roll_tx_scale+1500;
-            fd->tx_yaw   =   (recieved.d2-1500)*4/fd->config.yaw_tx_scale+1500;
-            fd->tx_throttle = recieved.d3;
+            int16_t values[4] = {0};
+            decode_some_int16s(packet+5, values, 4 ); //should be 9.
+            fd->tx_roll  =  (values[0]-1500)*4/fd->config.pitch_roll_tx_scale+1500;
+            fd->tx_pitch = -(values[1]-1500)*4/fd->config.pitch_roll_tx_scale+1500;
+            fd->tx_yaw   =  (values[2]-1500)*4/fd->config.yaw_tx_scale+1500;
+            fd->tx_throttle = values[3];
             
             fd->command_used_number = 0;
             
@@ -35,19 +36,19 @@ void process_packet( uint8_t * packet, FlightData * fd ) {
                 fd->config.pid_yaw->zero(); //zero the integral error
                 
                 // enable flying (arm it) when yaw-> throttle==min.
-                if (recieved.d2 > MAX_SAFETY && fd->armed == 1) {
+                if (values[2] > MAX_SAFETY && fd->armed == 1) {
                     fd->armed = 3; //armed=3 means ready to fly
                     //if (fd->telem_mode) rprintf("armed\n");
                 }
                 //armed=1 means we've gotten one packet with yaw>MINCHECK
-                if (recieved.d2 > MAX_SAFETY) fd->armed |= 1;
+                if (values[2] > MAX_SAFETY) fd->armed |= 1;
                 
-                if (recieved.d2 < MIN_SAFETY)  {  //disarm when yaw
+                if (values[2] < MIN_SAFETY)  {  //disarm when yaw
                     fd->armed = 0;
                     write_motors_zero();
                 }
                 
-                if ((recieved.d2 < MIN_SAFETY) && (recieved.d0 > MAX_SAFETY) && (recieved.d1 < MIN_SAFETY))
+                if ((values[2] < MIN_SAFETY) && (values[0] > MAX_SAFETY) && (values[1] < MIN_SAFETY))
                 { fd->please_update_sensors = 1; } //zero sensors.
             }
             /*if (fd->telem_mode) {
@@ -115,17 +116,17 @@ void process_packet( uint8_t * packet, FlightData * fd ) {
                 break; // <- NO BREAK, I want it to send the PIDs back.
             }
             case 'p':{   // request for PID values
-                    int16_t values[] = {
-                        fd->config.pid_pitch->p, fd->config.pid_pitch->i, fd->config.pid_pitch->d,
-                        fd->config.pid_roll->p, fd->config.pid_roll->i, fd->config.pid_roll->d,
-                        fd->config.pid_yaw->p, fd->config.pid_yaw->i, fd->config.pid_yaw->d,
-                        fd->config.pitch_roll_tx_scale,
-                        fd->config.yaw_tx_scale,
-                        fd->config.flying_mode,
-                        fd->config.led_mode
-                    };
-                    send_some_int16s(SETTINGS_COMM,QUAD_2_REMOTE_SETTINGS,values, sizeof(values));
-                    break;
+                int16_t values[] = {
+                    fd->config.pid_pitch->p, fd->config.pid_pitch->i, fd->config.pid_pitch->d,
+                    fd->config.pid_roll->p, fd->config.pid_roll->i, fd->config.pid_roll->d,
+                    fd->config.pid_yaw->p, fd->config.pid_yaw->i, fd->config.pid_yaw->d,
+                    fd->config.pitch_roll_tx_scale,
+                    fd->config.yaw_tx_scale,
+                    fd->config.flying_mode,
+                    fd->config.led_mode
+                };
+                send_some_int16s(SETTINGS_COMM,QUAD_2_REMOTE_SETTINGS,values, sizeof(values));
+                break;
             }
             case 'r':{	//TEMPORARY!!! telemetry toggle (for debug mode)
                 if (! fd->armed) fd->user_feedback = 10;

@@ -8,6 +8,7 @@ extern "C" {
     #include "print.h"
 }   
 #include "uart.h"
+#include "twi.h"
 #include "pwm.h"
 #include "pid.h"
 #include "ser_pkt.h"
@@ -19,15 +20,21 @@ int16_t limit(int16_t, int16_t, int16_t);
 
 int main(void)
 {
-    // set for 16 MHz clock
-    CPU_PRESCALE(0);
+    CPU_PRESCALE(0);  // set for 16 MHz clock
+    /*--setup busses--*/
     pwm_init();
     usb_init();
+    twi_init(100);
     uart_init(115200);
+    _delay_ms(100);
     
-    _delay_ms(1000);
+    /*--setup devices--*/
+    //init_wii_sensors();
+    //i2c_send_byte(0xA6, 0xFE, 0x04) && i2c_send_byte(0xA6, 0xFE, 0x05)
+    //unsigned char init_data[] = {0xA6, 0xFE, 0x04, 0x00};
+    //twi_exchange(init_data);
     
-    print("yo\n");
+    print("teensy_copter, welcome.\n");
     
     PID pitch, roll, yaw(10,0,0);
     
@@ -35,7 +42,6 @@ int main(void)
     fd.config.pid_pitch = &pitch;
     fd.config.pid_roll = &roll;
     fd.config.pid_yaw = &yaw;
-    
     
 
     unsigned char packet[128] = "";
@@ -46,13 +52,24 @@ int main(void)
         unsigned char done = process_incoming_packet( packet , &packet_position );
         if (done == 0) process_packet( packet, &fd );
         
+        if (done == 0){
+            print("th: ");
+            printNumber(fd.tx_throttle,DEC);
+            print(" ya: ");
+            printNumber(fd.tx_yaw,DEC);
+            print(" pitch: ");
+            printNumber(fd.tx_pitch,DEC);
+            print(" roll: ");
+            printNumber(fd.tx_roll,DEC);
+            print("\n");
+        }
+        
         //short val = yaw.update(1000,1000);
         //val = 2+val;
-        write_servo(0, 1000 + (i/3+250)%1000);
-        write_servo(1, 1000 + (i/3+500)%1000);
-        write_servo(2, 1000 + (i/3+750)%1000);
-        write_servo(3, 1000 + (i/3)%1000);
-        //OCR1A = (i*40)%40000; //for full led pwm
+        write_servo(0, fd.tx_throttle);
+        write_servo(1, fd.tx_throttle);
+        write_servo(2, fd.tx_throttle);
+        write_servo(3, fd.tx_throttle);
         
         i++;
 		_delay_ms(1);
