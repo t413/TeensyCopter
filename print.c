@@ -63,10 +63,11 @@ void phex16(unsigned int i)
 /* ---- additions by Tim ---- */
 /* -- number printing support. Thanks to the Arduino Print class -- */
 
-void printNumber(unsigned long n, uint8_t base)
+void printNumber(signed long n, uint8_t base)
 {
     unsigned char buf[8 * sizeof(long)]; // Assumes 8-bit chars. 
     unsigned long i = 0;
+    if (n<0) { usb_debug_putchar('-'); n=-n; } //make number always positive.
     
     if (n == 0) {
         usb_debug_putchar('0');

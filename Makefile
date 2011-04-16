@@ -52,6 +52,7 @@ SRC = \
     ser_pkt.c \
     uart.c \
     twi.c \
+    wii_sensors.c \
     analog.c 
 
 # MCU name, you MUST set this to match the board you are using
