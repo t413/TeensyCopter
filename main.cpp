@@ -4,14 +4,14 @@
 #include <avr/pgmspace.h>
 #include <inttypes.h>
 extern "C" {
-    #include "usb_debug_only.h"
-    #include "print.h"
+    #include "drivers/usb_debug_only.h"
+    #include "drivers/print.h"
 }   
-#include "uart.h"
-#include "twi.h"
-#include "pwm.h"
-#include "pid.h"
+#include "drivers/uart.h"
+#include "drivers/twi.h"
+#include "drivers/pwm.h"
 #include "altitude_sonar.h"
+#include "pid.h"
 #include "ser_pkt.h"
 #include "wii_sensors.h"
 #include "FlightData.h"

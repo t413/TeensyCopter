@@ -46,16 +46,16 @@ TARGET = main
 
 # List C source files here. (C dependencies are automatically generated.)
 SRC = \
-    usb_debug_only.c \
-    print.c \
-    pwm.c \
+    drivers/usb_debug_only.c \
+    drivers/print.c \
+    drivers/pwm.c \
+    drivers/uart.c \
+    drivers/twi.c \
+    drivers/analog.c \
+    drivers/eeprom.c \
     ser_pkt.c \
-    uart.c \
-    twi.c \
     wii_sensors.c \
     altitude_sonar.c \
-    analog.c \
-    drivers/eeprom.c
 
 # MCU name, you MUST set this to match the board you are using
 # type "make clean" after changing this, so all files will be rebuilt

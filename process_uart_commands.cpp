@@ -8,12 +8,12 @@
 
 #include "process_uart_commands.h"
 #include "ser_pkt.h"
-#include "pwm.h"
+#include "drivers/pwm.h"
 #include "FlightData.h"
 
 extern "C" {
-#include "usb_debug_only.h"
-#include "print.h"
+#include "drivers/usb_debug_only.h"
+#include "drivers/print.h"
 }   
 
 #define MINIMUM(a,b)		(((a)>(b))? (b):(a))

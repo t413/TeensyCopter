@@ -7,12 +7,12 @@
 
 #include <util/delay.h>
 #include <inttypes.h>
-#include "uart.h"
-#include "twi.h"
+#include "drivers/uart.h"
+#include "drivers/twi.h"
 #include "wii_sensors.h"
 
-#include "usb_debug_only.h"
-#include "print.h"
+#include "drivers/usb_debug_only.h"
+#include "drivers/print.h"
 
 
 uint8_t init_wii_sensors(void){

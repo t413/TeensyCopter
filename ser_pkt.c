@@ -19,7 +19,7 @@
  */
 
 #include "ser_pkt.h"
-#include "uart.h"
+#include "drivers/uart.h"
 
 #define START_OF_MSG0 0x93
 #define START_OF_MSG1 0xE0
