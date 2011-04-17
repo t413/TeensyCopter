@@ -31,7 +31,7 @@ short PID::update(short incoming_val, short goal_val){
     
 	//integral calculation.
 	error += delta;
-	//dual_clip( &error, i_limit * INTEGRAL_SCALING_FACTOR * TOTAL_SCALING_FACTOR/i );  //limits how high or low the error can get
+	dual_clip( &error, i_limit * INTEGRAL_SCALING_FACTOR * TOTAL_SCALING_FACTOR/i );  //limits how high or low the error can get
     
 	//derivative calculation.
 	short this_d = (incoming_val - prev_val);
@@ -45,9 +45,8 @@ void PID::zero(void){
 }
 
 
-/*
-void PID:dual_clip(long * val, unsigned short cap){
+void PID::dual_clip(long * val, unsigned short cap){
 	if (*val > cap) *val = cap;
 	else if (*val < -cap) *val = -cap;
 }
-*/
+

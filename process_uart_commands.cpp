@@ -11,6 +11,11 @@
 #include "pwm.h"
 #include "FlightData.h"
 
+extern "C" {
+#include "usb_debug_only.h"
+#include "print.h"
+}   
+
 #define MINIMUM(a,b)		(((a)>(b))? (b):(a))
 #define MATCH(a,b)		(strcmp(a,b) == 0)
 
@@ -66,6 +71,7 @@ void process_packet( uint8_t * packet, FlightData * fd ) {
         {
             case 'X':	//kill signal
             {
+                print("kill signal\n");
                 fd->armed = 0;
                 write_motors_zero();
                 break;
@@ -84,6 +90,7 @@ void process_packet( uint8_t * packet, FlightData * fd ) {
                 break;
             }*/
             case REMOTE_2_QUAD_SETTINGS: {   // update PID values
+                print("REMOTE_2_QUAD_SETTINGS\n");
                 int16_t values[15] = {0};
                 decode_some_int16s(packet+5, values, packet[4]/2 ); //should be 9.
                 
@@ -103,6 +110,8 @@ void process_packet( uint8_t * packet, FlightData * fd ) {
                 fd->config.flying_mode = values[11];
                 fd->config.led_mode = values[12];
                 
+                print("pitch[] = "); printNumber(values[0],DEC); print(" "); printNumber(values[1],DEC); print(" "); printNumber(values[2],DEC);  print("\n");
+                
                 /*if (fd->telem_mode) {
                     rprintf("\n updated pids to(*10): %i,%i,%i,%i,%i,%i,%i,%i,%i",
                             fd->config.pid_pitch->p, fd->config.pid_pitch->i, fd->config.pid_pitch->d,
@@ -116,6 +125,7 @@ void process_packet( uint8_t * packet, FlightData * fd ) {
                 break; // <- NO BREAK, I want it to send the PIDs back.
             }
             case 'p':{   // request for PID values
+                print("request for PID values\n");
                 int16_t values[] = {
                     fd->config.pid_pitch->p, fd->config.pid_pitch->i, fd->config.pid_pitch->d,
                     fd->config.pid_roll->p, fd->config.pid_roll->i, fd->config.pid_roll->d,

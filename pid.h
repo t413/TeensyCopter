@@ -21,7 +21,7 @@ class PID{
     short p, i, d;
     
     private:
-        //void dual_clip(long * val, unsigned short cap);
+        void dual_clip(long * val, unsigned short cap);
         unsigned short i_limit;
         signed long error;
         signed short prev_val;
