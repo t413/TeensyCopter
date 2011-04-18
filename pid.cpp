@@ -13,7 +13,7 @@
 
 
 
-PID::PID(short new_p, short new_i, short new_d) {
+PID::PID(int16_t new_p, int16_t new_i, int16_t new_d) {
     p = new_p;
     i = new_i;
     d = new_d;
@@ -25,16 +25,16 @@ PID::PID(void) {
     d = 0;
 }
 
-short PID::update(short incoming_val, short goal_val){
+int16_t PID::update(int16_t incoming_val, int16_t goal_val){
     
-	short delta = goal_val - incoming_val;
+	int16_t delta = goal_val - incoming_val;
     
 	//integral calculation.
 	error += delta;
 	dual_clip( &error, i_limit * INTEGRAL_SCALING_FACTOR * TOTAL_SCALING_FACTOR/i );  //limits how high or low the error can get
     
 	//derivative calculation.
-	short this_d = (incoming_val - prev_val);
+	int16_t this_d = (incoming_val - prev_val);
 	prev_val = incoming_val;
     
 	return ( (delta * p) + (error * i)/INTEGRAL_SCALING_FACTOR + (this_d * d)) / TOTAL_SCALING_FACTOR;
@@ -45,7 +45,7 @@ void PID::zero(void){
 }
 
 
-void PID::dual_clip(long * val, unsigned short cap){
+void PID::dual_clip(int64_t * val, uint16_t cap){
 	if (*val > cap) *val = cap;
 	else if (*val < -cap) *val = -cap;
 }

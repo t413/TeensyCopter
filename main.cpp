@@ -56,11 +56,9 @@ int main(void)
     zero_wii_sensors( &zero_data );
     
     /*--setup data storage--*/
-    PID pitch, roll, yaw; //create PID control system objects
-    FlightData fd = {0};  //create the control and settings data structure
-    fd.config.pid_pitch = &pitch; //give flight settings reference to the PID objects ..
-    fd.config.pid_roll = &roll;
-    fd.config.pid_yaw = &yaw;
+    FlightData fd;  //create the control and settings object. the constructor fills in defaults
+    fd.load_from_eeprom(); //pulls stored values from eeprom
+    
 	short pitch_offset = 0,roll_offset = 0,yaw_offset = 0;
     unsigned char packet[128] = "";
     unsigned char packet_position = 0;
@@ -79,9 +77,9 @@ int main(void)
         if (i%5==0){ //only update every 5ms.
             unsigned char data_type = update_wii_data(&sensor_vals, &zero_data);
             if (data_type == 1){
-                pitch_offset = pitch.update( sensor_vals.roll+1500, fd.tx_pitch );
-                roll_offset  = roll.update(  sensor_vals.pitch+1500,  fd.tx_roll );
-                yaw_offset   = yaw.update(   sensor_vals.yaw+1500,   fd.tx_yaw );
+                pitch_offset = fd.config.pid_pitch->update((int16_t)sensor_vals.roll +1500,   fd.tx_pitch );
+                roll_offset  = fd.config.pid_roll->update( (int16_t)sensor_vals.pitch+1500,   fd.tx_roll );
+                yaw_offset   = fd.config.pid_yaw->update(  (int16_t)sensor_vals.yaw  +1500,   fd.tx_yaw );
             }
             /* ---- Motor Control ---- */
             if (fd.armed >= 3){

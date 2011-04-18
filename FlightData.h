@@ -1,9 +1,7 @@
 #ifndef FLIGHTDATA_H
 #define FLIGHTDATA_H
 
-#include "pid.h"
-#include <inttypes.h>
-
+    
 
 /*----flying_mode----*/
 #define X_MODE 0
@@ -23,10 +21,9 @@
 #define MIN_THROTTLE MIN_CONTROL + 100
 
 
-typedef struct {
-    
+class FlightData{
+public:
     unsigned char armed;
-    unsigned char telem_mode;
     int16_t tx_throttle, tx_yaw, tx_pitch, tx_roll;
     unsigned int command_used_number;
     unsigned char please_update_sensors;
@@ -41,8 +38,14 @@ typedef struct {
         int16_t pitch_roll_tx_scale;
         int16_t yaw_tx_scale;
     } config;
-    
-} FlightData;
+
+    /*----functions----*/
+    FlightData(void);
+    void load_from_eeprom(void);
+
+private:
+};
 
 
-#endif /* COMMONDEFS_H_ */
+
+#endif

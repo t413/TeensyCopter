@@ -85,6 +85,7 @@ OBJDIR = .
 # List C++ source files here. (C dependencies are automatically generated.)
 CPPSRC = $(TARGET).cpp \
     pid.cpp \
+    FlightData.cpp \
     process_uart_commands.cpp 
 
 

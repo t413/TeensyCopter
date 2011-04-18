@@ -14,17 +14,17 @@
 class PID{
     public:
     PID(void); //default constructor
-    PID(short p, short i, short d);
-    short update(short incoming_val, short goal_val);
+    PID(int16_t p, int16_t i, int16_t d);
+    int16_t update(int16_t incoming_val, int16_t goal_val);
     void zero(); //zeroes integral error.
     
-    short p, i, d;
+    int16_t p, i, d;
     
     private:
-        void dual_clip(long * val, unsigned short cap);
-        unsigned short i_limit;
-        signed long error;
-        signed short prev_val;
+        void dual_clip(int64_t * val, uint16_t cap);
+        uint16_t i_limit;
+        int64_t error;
+        int16_t prev_val;
 };
 
 
