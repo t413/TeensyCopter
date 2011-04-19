@@ -110,6 +110,8 @@ void process_packet( uint8_t * packet, FlightData * fd ) {
                 fd->config.flying_mode = values[11];
                 fd->config.led_mode = values[12];
                 
+                fd->store_to_eeprom();
+                
                 print("pitch[] = "); printNumber(values[0],DEC); print(" "); printNumber(values[1],DEC); print(" "); printNumber(values[2],DEC);  print("\n");
                 
                 /*if (fd->telem_mode) {
@@ -136,11 +138,6 @@ void process_packet( uint8_t * packet, FlightData * fd ) {
                     fd->config.led_mode
                 };
                 send_some_int16s(SETTINGS_COMM,QUAD_2_REMOTE_SETTINGS,values, sizeof(values));
-                break;
-            }
-            case 'r':{	//TEMPORARY!!! telemetry toggle (for debug mode)
-                if (! fd->armed) fd->user_feedback = 10;
-                fd->telem_mode = !fd->telem_mode;
                 break;
             }
             case '$':{	//TEMPORARY!!! pulse pattern to test pin direction.

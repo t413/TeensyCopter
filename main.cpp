@@ -52,12 +52,19 @@ int main(void)
     
     /*--setup devices--*/
     init_wii_sensors();
-    SENSOR_DATA zero_data = {0}, sensor_vals;
-    zero_wii_sensors( &zero_data );
+    SENSOR_DATA sensor_vals;
     
     /*--setup data storage--*/
     FlightData fd;  //create the control and settings object. the constructor fills in defaults
+    PID pitch, roll, yaw; //create PID control system objects
+    fd.config.pid_pitch = &pitch; //give flight settings reference to the PID objects ..
+    fd.config.pid_roll = &roll;
+    fd.config.pid_yaw = &yaw;
     fd.load_from_eeprom(); //pulls stored values from eeprom
+    
+    print("pitch ["); printNumber( pitch.p ,DEC); print(",");
+    printNumber( pitch.i ,DEC); print(",");
+    printNumber( pitch.d ,DEC); print("]\n");
     
 	short pitch_offset = 0,roll_offset = 0,yaw_offset = 0;
     unsigned char packet[128] = "";
@@ -71,15 +78,20 @@ int main(void)
         //if (done == 0) { printNumber(fd.tx_throttle,DEC); print("\n"); }
         
         //PORTD = (i%300 > 100)? (PORTD|(1<<6)) : (PORTD & ~(1<<6));
-        FakePWM0(6,((i/200)%10),10);
+        if ((i/20/10)%2) FakePWM0(6,((i/20)%10),10); //fade in
+        else FakePWM0(6,10-((i/20)%10),10); //fade out
         
         /* ---- Control System ---- */
         if (i%5==0){ //only update every 5ms.
-            unsigned char data_type = update_wii_data(&sensor_vals, &zero_data);
+            unsigned char data_type = update_wii_data(&sensor_vals, &fd.zero_data);
             if (data_type == 1){
-                pitch_offset = fd.config.pid_pitch->update((int16_t)sensor_vals.roll +1500,   fd.tx_pitch );
-                roll_offset  = fd.config.pid_roll->update( (int16_t)sensor_vals.pitch+1500,   fd.tx_roll );
-                yaw_offset   = fd.config.pid_yaw->update(  (int16_t)sensor_vals.yaw  +1500,   fd.tx_yaw );
+                //pitch_offset =  ((signed)(fd.tx_pitch-1500)-sensor_vals.pitch) * 300 /1500.00;
+                //roll_offset  =  ((signed)(fd.tx_roll -1500)+sensor_vals.roll ) * 30 /150.00;
+                //yaw_offset   = -((signed)(fd.tx_yaw  -1500)-sensor_vals.yaw  ) * 40 /150.00;
+                
+                pitch_offset =  pitch.update(sensor_vals.pitch, (signed)(fd.tx_pitch-1500) );
+                roll_offset  =  roll.update(-sensor_vals.roll,  (signed)(fd.tx_roll -1500) );
+                yaw_offset   = -yaw.update(  sensor_vals.yaw,   (signed)(fd.tx_yaw  -1500) );
             }
             /* ---- Motor Control ---- */
             if (fd.armed >= 3){
@@ -87,13 +99,13 @@ int main(void)
                     write_servo(0, fd.tx_throttle + pitch_offset - yaw_offset); //front
                     write_servo(1, fd.tx_throttle - pitch_offset - yaw_offset); //back
                     write_servo(2, fd.tx_throttle + roll_offset + yaw_offset);  //left
-                    write_servo(3, fd.tx_throttle - roll_offset + yaw_offset);   //right
+                    write_servo(3, fd.tx_throttle - roll_offset + yaw_offset);  //right
                 }
                 else if (fd.config.flying_mode == X_MODE){
-                    write_servo(0, fd.tx_throttle + pitch_offset + roll_offset + yaw_offset); //Front = Front/Right
-                    write_servo(1, fd.tx_throttle - pitch_offset - roll_offset + yaw_offset); //Back = Left/Rear
-                    write_servo(2, fd.tx_throttle - pitch_offset + roll_offset - yaw_offset); //Left = Front/Left
-                    write_servo(3, fd.tx_throttle + pitch_offset - roll_offset - yaw_offset); //Right = Right/Rear
+                    write_servo(0, fd.tx_throttle + pitch_offset + roll_offset - yaw_offset); //Front = Front/Right
+                    write_servo(1, fd.tx_throttle - pitch_offset - roll_offset - yaw_offset); //Back = Left/Rear
+                    write_servo(2, fd.tx_throttle - pitch_offset + roll_offset + yaw_offset); //Left = Front/Left
+                    write_servo(3, fd.tx_throttle + pitch_offset - roll_offset + yaw_offset); //Right = Right/Rear
                 }
                 
                 if (fd.command_used_number++ > 100) { //loss of communication.
@@ -109,16 +121,21 @@ int main(void)
                 }
             }
             else { //not armed.
+                if (i%50==0) write_motors_zero();
                 if (fd.please_update_sensors){ //allows the user interface task to zero the sensor values.
                     fd.please_update_sensors = 0;
-                    zero_wii_sensors(&zero_data);
+                    zero_wii_sensors(&fd.zero_data);
+                    fd.store_eeprom_zero_data();
                     //pulse_motors(3, 200);
                 }
                 fd.command_used_number++;
             }
         }
-        if (i%500 == 0) {
-            printNumber( OCR1A ,DEC); print("; ");
+        if (i%200 == 0) {
+            printNumber( -sensor_vals.pitch ,DEC); print("<-");
+            printNumber( (signed)(fd.tx_pitch-1500) ,DEC); print(" * ");
+            printNumber( pitch.p ,DEC); print(" = ");
+            printNumber( pitch_offset ,DEC); print("; ");
             printNumber(sensor_vals.pitch,DEC); print(" ");
             printNumber(sensor_vals.roll,DEC); print(" ");
             printNumber(sensor_vals.yaw,DEC); print("\n");

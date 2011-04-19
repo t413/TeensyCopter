@@ -8,7 +8,7 @@
 
 #include "pid.h"
 
-#define TOTAL_SCALING_FACTOR (1<<10) //(1<<10) = 1,024.
+#define TOTAL_SCALING_FACTOR 1500.00 //(1<<10) = 1,024.
 #define INTEGRAL_SCALING_FACTOR 8
 
 
@@ -37,7 +37,7 @@ int16_t PID::update(int16_t incoming_val, int16_t goal_val){
 	int16_t this_d = (incoming_val - prev_val);
 	prev_val = incoming_val;
     
-	return ( (delta * p) + (error * i)/INTEGRAL_SCALING_FACTOR + (this_d * d)) / TOTAL_SCALING_FACTOR;
+	return (float)( (delta * (float)p) + (error * i)/INTEGRAL_SCALING_FACTOR + (this_d * d)) / (float)TOTAL_SCALING_FACTOR;
 }
 
 void PID::zero(void){

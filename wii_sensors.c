@@ -68,12 +68,12 @@ uint8_t update_wii_data(SENSOR_DATA *vals, SENSOR_DATA *zer0){
 		if ( data[5]&0x02 ) //wm+ data
 		{
 			vals->yaw = (((data[3]>>2)<<8)+data[0]);
-			vals->pitch = (((data[4]>>2)<<8)+data[1]);
-			vals->roll = (((data[5]>>2)<<8)+data[2]);
+			vals->pitch = (((data[5]>>2)<<8)+data[2]); //reversed picth and roll
+			vals->roll = (((data[4]>>2)<<8)+data[1]);
 			//use the slow/fast mode data
-			vals->yaw   = ((signed)((data[3]&0x02)>>1  ? vals->yaw/5   : vals->yaw)) - (signed)zer0->yaw;
-			vals->pitch = ((signed)((data[4]&0x02)>>1  ? vals->pitch/5 : vals->pitch)) - (signed)zer0->pitch;
-			vals->roll  = ((signed)((data[3]&0x01)     ? vals->roll/5  : vals->roll)) - (signed)zer0->roll;
+			vals->yaw   = ((signed)((data[3]&0x02)>>1  ? vals->yaw/5   : vals->yaw))   - (signed)zer0->yaw;
+			vals->pitch = ((signed)((data[3]&0x01)     ? vals->pitch/5 : vals->pitch)) - (signed)zer0->pitch; //reversed too
+			vals->roll  = ((signed)((data[4]&0x02)>>1  ? vals->roll/5  : vals->roll))  - (signed)zer0->roll;
 			return 1; //got wm+ data successfully
 		}
 		else //this is nunchuck data

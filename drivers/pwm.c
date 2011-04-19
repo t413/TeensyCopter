@@ -67,7 +67,7 @@ void write_servo(unsigned char which, short in_val){
 void write_motors_zero(void){
     OCR1A = SERVO_MIN;
     OCR1B = SERVO_MIN;
+    OCR1C = SERVO_MIN;
     OCR3A = SERVO_MIN;
-    OCR3B = SERVO_MIN;
 }
 

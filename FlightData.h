@@ -1,7 +1,9 @@
 #ifndef FLIGHTDATA_H
 #define FLIGHTDATA_H
 
-    
+#include "pid.h"
+#include "wii_sensors.h"
+
 
 /*----flying_mode----*/
 #define X_MODE 0
@@ -24,6 +26,8 @@
 class FlightData{
 public:
     unsigned char armed;
+    SENSOR_DATA zero_data;
+    
     int16_t tx_throttle, tx_yaw, tx_pitch, tx_roll;
     unsigned int command_used_number;
     unsigned char please_update_sensors;
@@ -38,11 +42,13 @@ public:
         int16_t pitch_roll_tx_scale;
         int16_t yaw_tx_scale;
     } config;
-
+    
     /*----functions----*/
     FlightData(void);
     void load_from_eeprom(void);
-
+    void store_to_eeprom(void);
+    void store_eeprom_zero_data(void);
+    
 private:
 };
 
