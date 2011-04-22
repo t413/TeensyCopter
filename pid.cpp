@@ -37,7 +37,7 @@ int16_t PID::update(int16_t incoming_val, int16_t goal_val){
 	int16_t this_d = (incoming_val - prev_val);
 	prev_val = incoming_val;
     
-	return (float)( (delta * (float)p) + (error * i)/INTEGRAL_SCALING_FACTOR + (this_d * d)) / (float)TOTAL_SCALING_FACTOR;
+	return (float)( (delta * (float)p) + (error * (float)i)/INTEGRAL_SCALING_FACTOR + (this_d * (float)d)) / (float)TOTAL_SCALING_FACTOR;
 }
 
 void PID::zero(void){

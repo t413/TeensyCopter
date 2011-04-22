@@ -47,8 +47,8 @@ int main(void)
     uart_init(115200);
     timer0_init();
     DDRD |= (1<<6); //LED port as output.
-    _delay_ms(1000);
-    print("teensy_copter, welcome.\n");
+    _delay_ms(100);
+    //print("teensy_copter, welcome.\n");
     
     /*--setup devices--*/
     init_wii_sensors();
@@ -61,6 +61,7 @@ int main(void)
     fd.config.pid_roll = &roll;
     fd.config.pid_yaw = &yaw;
     fd.load_from_eeprom(); //pulls stored values from eeprom
+    if (fd.config.flying_mode == TRICOPTER_MODE) write_servo(0, 1500); //servo channel
     
     print("pitch ["); printNumber( pitch.p ,DEC); print(",");
     printNumber( pitch.i ,DEC); print(",");
@@ -107,6 +108,12 @@ int main(void)
                     write_servo(2, fd.tx_throttle - pitch_offset + roll_offset + yaw_offset); //Left = Front/Left
                     write_servo(3, fd.tx_throttle + pitch_offset - roll_offset + yaw_offset); //Right = Right/Rear
                 }
+                else if (fd.config.flying_mode == TRICOPTER_MODE){
+                    write_servo(0, 1500 - yaw_offset); //servo
+                    write_servo(1, fd.tx_throttle - pitch_offset); //Back
+                    write_servo(2, fd.tx_throttle + pitch_offset/2 - roll_offset ); //left
+                    write_servo(3, fd.tx_throttle + pitch_offset/2 + roll_offset ); //right
+                }
                 
                 if (fd.command_used_number++ > 100) { //loss of communication.
                     fd.armed = 5; //slow shut down mode
@@ -121,7 +128,10 @@ int main(void)
                 }
             }
             else { //not armed.
-                if (i%50==0) write_motors_zero();
+                if (i%50==0) {
+                    write_motors_zero();
+                    if (fd.config.flying_mode == TRICOPTER_MODE) write_servo(0, 1500); //servo channel
+                }
                 if (fd.please_update_sensors){ //allows the user interface task to zero the sensor values.
                     fd.please_update_sensors = 0;
                     zero_wii_sensors(&fd.zero_data);

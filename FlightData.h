@@ -8,6 +8,7 @@
 /*----flying_mode----*/
 #define X_MODE 0
 #define PLUS_MODE 1
+#define TRICOPTER_MODE 2
 
 /*----armed----*/
 #define SAFTY_ARMING 1
