@@ -25,7 +25,7 @@
 #define START_OF_MSG1 0xE0
 
 
-void send_packet (uint8_t,uint8_t,uint8_t*,uint8_t );
+
 void console_write (uint8_t*,uint8_t);
 void ugear_cksum (const uint8_t,const uint8_t,const uint8_t*,const uint8_t,uint8_t*,uint8_t* );
 

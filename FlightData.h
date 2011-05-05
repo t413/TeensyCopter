@@ -38,6 +38,7 @@ public:
         PID * pid_roll;
         PID * pid_pitch;
         PID * pid_yaw;
+        PID * pid_alt;
         uint8_t flying_mode; //X_MODE or PLUS_MODE
         uint8_t led_mode;
         int16_t pitch_roll_tx_scale;

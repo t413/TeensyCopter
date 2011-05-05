@@ -50,7 +50,8 @@ void process_packet( uint8_t * packet, FlightData * fd ) {
                 
                 if (values[2] < MIN_SAFETY)  {  //disarm when yaw
                     fd->armed = 0;
-                    write_motors_zero();
+                    if (fd->config.flying_mode == TRICOPTER_MODE) write_motors(SERVO_MID,SERVO_MIN,SERVO_MIN,SERVO_MIN);
+                    else write_motors_zero();
                 }
                 
                 if ((values[2] < MIN_SAFETY) && (values[0] > MAX_SAFETY) && (values[1] < MIN_SAFETY))
@@ -73,7 +74,8 @@ void process_packet( uint8_t * packet, FlightData * fd ) {
             {
                 print("kill signal\n");
                 fd->armed = 0;
-                write_motors_zero();
+                if (fd->config.flying_mode == TRICOPTER_MODE) write_motors(SERVO_MID,SERVO_MIN,SERVO_MIN,SERVO_MIN);
+                else write_motors_zero();
                 break;
             }
             case 'z':	// Zero sensors

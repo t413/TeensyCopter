@@ -13,11 +13,19 @@
 extern "C" {
 #endif
 
-    
+//used to write to the output
+#define SERVO_MIN 2000
+#define SERVO_MAX 4000
+#define SERVO_MID 3000
+
     
 void pwm_init(void);
-void write_servo(unsigned char which, short in_val);
-void write_motors_zero(void);
+void write_servo(uint8_t which, uint16_t in_val);
+void write_motors(uint16_t m0, uint16_t m1, uint16_t m2, uint16_t m3);
+    
+#define write_motors_zero() write_motors(SERVO_MIN,SERVO_MIN,SERVO_MIN,SERVO_MIN)
+
+
     
     
 #ifdef __cplusplus

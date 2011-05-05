@@ -41,6 +41,7 @@ extern "C" {
 	#define PITCH_ROLL		1
 	#define MOTOR_OUTPUT	2
 	#define DEBUG_OUTPUT	3
+    #define ALTITUDE        4
 #define SETTINGS_COMM	3
 	#define REMOTE_2_QUAD_SETTINGS	0
 	#define QUAD_2_REMOTE_SETTINGS	1
@@ -62,6 +63,8 @@ typedef struct {
 /*****************************************/
 /**********		declarations	**********/
 /*****************************************/
+void send_packet (uint8_t,uint8_t,uint8_t*,uint8_t );
+
 void send_some_int16s(uint8_t pktID, uint8_t pktTYPE, int16_t * values, uint8_t number);
 void send_int16_packet(uint8_t,uint8_t,int16_t,int16_t,int16_t,int16_t);
 void send_float_packet(uint8_t,uint8_t,float,float);

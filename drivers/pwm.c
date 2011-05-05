@@ -10,8 +10,8 @@
 #include <inttypes.h>
 #include "pwm.h"
 
-#define SERVO_MIN 2000
-#define SERVO_MAX 4000
+
+uint16_t limit (uint16_t in_val, uint16_t min, uint16_t max);
 
 //TODO: make variable argument init that inits spesific channels.
 
@@ -45,16 +45,14 @@ void pwm_init(void) {
     DDRC |= (1 << 6);
     // Set OCRA1 to something - Servo is based on 1 - 2ms pulse if 40000 = 20ms pulse whats between 1 and 2 (2200 TO 3800) 
 
-    write_motors_zero(); 
 }
 
 
 //input between 1000 and 2000
-void write_servo(unsigned char which, short in_val){
+void write_servo(uint8_t which, uint16_t in_val){
     //(2200 TO 3800) 
-    in_val = ((in_val-1000)*2) + SERVO_MIN; //should be scaled between 2200 and 3600 now.
-    if (in_val > SERVO_MAX) in_val = SERVO_MAX;
-    if (in_val < SERVO_MIN) in_val = SERVO_MIN;
+    in_val = ((in_val-1000)*2) + SERVO_MIN; //should be scaled between 2000 and 4000 now.
+    in_val = limit(in_val, SERVO_MIN, SERVO_MAX);
     
     switch (which){
         case 0 : OCR1A = in_val; break;
@@ -64,10 +62,19 @@ void write_servo(unsigned char which, short in_val){
     }
 }
 
-void write_motors_zero(void){
-    OCR1A = SERVO_MIN;
-    OCR1B = SERVO_MIN;
-    OCR1C = SERVO_MIN;
-    OCR3A = SERVO_MIN;
+void write_motors(uint16_t m0, uint16_t m1, uint16_t m2, uint16_t m3) {
+    OCR1A = limit(m0, SERVO_MIN, SERVO_MAX);
+    OCR1B = limit(m1, SERVO_MIN, SERVO_MAX);
+    OCR1C = limit(m2, SERVO_MIN, SERVO_MAX);
+    OCR3A = limit(m3, SERVO_MIN, SERVO_MAX);
 }
+
+uint16_t limit (uint16_t in_val, uint16_t min, uint16_t max){
+    if (in_val > max) return max;
+    else if (in_val < min) return min;
+    else return in_val;
+}
+
+
+
 

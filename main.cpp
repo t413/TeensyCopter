@@ -6,6 +6,7 @@
 extern "C" {
     #include "drivers/usb_debug_only.h"
     #include "drivers/print.h"
+    #include "drivers/analog.h"
 }   
 #include "drivers/uart.h"
 #include "drivers/twi.h"
@@ -16,26 +17,12 @@ extern "C" {
 #include "wii_sensors.h"
 #include "FlightData.h"
 #include "process_uart_commands.h"
+#include "ser_pkt.h"
 
 #define CPU_PRESCALE(n)	(CLKPR = 0x80, CLKPR = (n))
 int16_t limit(int16_t, int16_t, int16_t);
 #define FakePWM0(port,val,period) PORTD = ((i %(period))>(val)) ? (PORTD|(1<<(port))) : (PORTD&~(1<<(port)))
 
-void scan(){
-    uint8_t data = 0; // not used, just a ptr to feed to twi_writeTo()
-    for( uint8_t addr = 1; addr <= 200; addr++ ) {
-        uint8_t rc = twi_writeTo(addr, &data, 0, 1);
-        if( rc == 0 ) {
-            print("\n device found at address ");
-            printNumber(addr,HEX); print("\n");
-        } else {
-            print(" ");
-            printNumber(addr,HEX);
-        }
-        if (addr%5==4) print("\n");
-    }
-    print("\n");
-}
 
 int main(void)
 {
@@ -47,8 +34,7 @@ int main(void)
     uart_init(115200);
     timer0_init();
     DDRD |= (1<<6); //LED port as output.
-    _delay_ms(100);
-    //print("teensy_copter, welcome.\n");
+    _delay_ms(10);
     
     /*--setup devices--*/
     init_wii_sensors();
@@ -56,16 +42,19 @@ int main(void)
     
     /*--setup data storage--*/
     FlightData fd;  //create the control and settings object. the constructor fills in defaults
-    PID pitch, roll, yaw; //create PID control system objects
+    PID pitch, roll, yaw, alt; //create PID control system objects
     fd.config.pid_pitch = &pitch; //give flight settings reference to the PID objects ..
     fd.config.pid_roll = &roll;
     fd.config.pid_yaw = &yaw;
+    fd.config.pid_alt = &alt;
     fd.load_from_eeprom(); //pulls stored values from eeprom
-    if (fd.config.flying_mode == TRICOPTER_MODE) write_servo(0, 1500); //servo channel
+    if (fd.config.flying_mode == TRICOPTER_MODE) write_motors(SERVO_MID,SERVO_MIN,SERVO_MIN,SERVO_MIN);
+    else write_motors_zero();
     
     print("pitch ["); printNumber( pitch.p ,DEC); print(",");
     printNumber( pitch.i ,DEC); print(",");
-    printNumber( pitch.d ,DEC); print("]\n");
+    printNumber( pitch.d ,DEC); print("]");
+    print("flying mode = ");printNumber(fd.config.flying_mode,DEC);print("\n");
     
 	short pitch_offset = 0,roll_offset = 0,yaw_offset = 0;
     unsigned char packet[128] = "";
@@ -122,15 +111,16 @@ int main(void)
                     //subtract from the throttle (see auto_land_plot.numbers document)
                     fd.tx_throttle -= (fd.command_used_number-100)/(1<<6);
                     if (fd.tx_throttle < 1100) {
-                        write_motors_zero();
+                        if (fd.config.flying_mode == TRICOPTER_MODE) write_motors(SERVO_MID,SERVO_MIN,SERVO_MIN,SERVO_MIN);
+                        else write_motors_zero();
                         fd.armed = 0;
                     } //TODO: change the 2^___ (a set-able variable)
                 }
             }
             else { //not armed.
                 if (i%50==0) {
-                    write_motors_zero();
-                    if (fd.config.flying_mode == TRICOPTER_MODE) write_servo(0, 1500); //servo channel
+                    if (fd.config.flying_mode == TRICOPTER_MODE) write_motors(SERVO_MID,SERVO_MIN,SERVO_MIN,SERVO_MIN);
+                    else write_motors_zero();
                 }
                 if (fd.please_update_sensors){ //allows the user interface task to zero the sensor values.
                     fd.please_update_sensors = 0;
@@ -141,14 +131,12 @@ int main(void)
                 fd.command_used_number++;
             }
         }
-        if (i%200 == 0) {
-            printNumber( -sensor_vals.pitch ,DEC); print("<-");
-            printNumber( (signed)(fd.tx_pitch-1500) ,DEC); print(" * ");
-            printNumber( pitch.p ,DEC); print(" = ");
-            printNumber( pitch_offset ,DEC); print("; ");
-            printNumber(sensor_vals.pitch,DEC); print(" ");
-            printNumber(sensor_vals.roll,DEC); print(" ");
-            printNumber(sensor_vals.yaw,DEC); print("\n");
+        
+        if (i%100 == 0) { //this is 1/100th = 40Hz, max sonar refresh is 20Hz if you want
+            uint16_t sonar_val = analogRead(8);
+            
+            uint8_t data[2] = { sonar_val, (sonar_val >> 8)  };
+            send_packet(TELEM_FEEDBACK, ALTITUDE, data, 2 );
         }
         
         i++;

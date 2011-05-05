@@ -41,15 +41,18 @@ void FlightData::load_from_eeprom( void ){
     config.pid_yaw->p = EEPROM_read_16(12);
     config.pid_yaw->i = EEPROM_read_16(14);
     config.pid_yaw->d = EEPROM_read_16(16);
+    config.pid_alt->p = EEPROM_read_16(18); //added altitude pid
+    config.pid_alt->i = EEPROM_read_16(20);
+    config.pid_alt->d = EEPROM_read_16(22);
     
-    config.flying_mode = EEPROM_read(18); //X_MODE or PLUS_MODE
-    config.led_mode = EEPROM_read(19); 
-    config.pitch_roll_tx_scale = EEPROM_read_16(20);
-    config.yaw_tx_scale = EEPROM_read_16(22);
+    config.flying_mode = EEPROM_read(24); //X_MODE or PLUS_MODE
+    config.led_mode = EEPROM_read(25); 
+    config.pitch_roll_tx_scale = EEPROM_read_16(26);
+    config.yaw_tx_scale = EEPROM_read_16(28);
     
-    zero_data.pitch = EEPROM_read_16(24);
-    zero_data.roll = EEPROM_read_16(26);
-    zero_data.yaw = EEPROM_read_16(28);
+    zero_data.pitch = EEPROM_read_16(30);
+    zero_data.roll = EEPROM_read_16(32);
+    zero_data.yaw = EEPROM_read_16(34);
     sei(); //re-enable interrupts
 }
 
@@ -65,19 +68,22 @@ void FlightData::store_to_eeprom( void ){
     EEPROM_write_16(12, config.pid_yaw->p);
     EEPROM_write_16(14, config.pid_yaw->i);
     EEPROM_write_16(16, config.pid_yaw->d);
+    EEPROM_write_16(18, config.pid_alt->p);
+    EEPROM_write_16(20, config.pid_alt->i);
+    EEPROM_write_16(22, config.pid_alt->d);
     
-    EEPROM_write(18, config.flying_mode); //X_MODE or PLUS_MODE
-    EEPROM_write(19, config.led_mode); 
-    EEPROM_write_16(20, config.pitch_roll_tx_scale);
-    EEPROM_write_16(22, config.yaw_tx_scale);
+    EEPROM_write(24, config.flying_mode); //X_MODE or PLUS_MODE
+    EEPROM_write(25, config.led_mode); 
+    EEPROM_write_16(26, config.pitch_roll_tx_scale);
+    EEPROM_write_16(28, config.yaw_tx_scale);
     sei(); //re-enable interrupts
 }
  
  void FlightData::store_eeprom_zero_data( void ){
      cli(); //turn off interrupts
-     EEPROM_write_16(24, zero_data.pitch );
-     EEPROM_write_16(26, zero_data.roll );
-     EEPROM_write_16(28, zero_data.yaw );
+     EEPROM_write_16(30, zero_data.pitch );
+     EEPROM_write_16(32, zero_data.roll );
+     EEPROM_write_16(34, zero_data.yaw );
      sei(); //re-enable interrupts
  }
  
