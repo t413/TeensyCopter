@@ -17,6 +17,7 @@ extern "C" {
 #define SERVO_MIN 2000
 #define SERVO_MAX 4000
 #define SERVO_MID 3000
+#define SERVO_Notif 2300
 
     
 void pwm_init(void);

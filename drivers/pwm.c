@@ -50,7 +50,7 @@ void pwm_init(void) {
 
 //input between 1000 and 2000
 void write_servo(uint8_t which, uint16_t in_val){
-    //(2200 TO 3800) 
+    //(2000 TO 4000)
     in_val = ((in_val-1000)*2) + SERVO_MIN; //should be scaled between 2000 and 4000 now.
     in_val = limit(in_val, SERVO_MIN, SERVO_MAX);
     

@@ -20,7 +20,7 @@ FlightData::FlightData( void ){
     
     command_used_number = 0;
     please_update_sensors = 0;
-    user_feedback = 0;
+    user_feedback_i = user_feedback_m = 0;
     
     /*--configs--*/
     config.flying_mode = X_MODE; //X_MODE or PLUS_MODE

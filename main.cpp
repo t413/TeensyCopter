@@ -30,7 +30,7 @@ int main(void)
     /*--setup busses--*/
     pwm_init();
     usb_init();
-    twi_init();
+    twi_init(10000);
     uart_init(115200);
     timer0_init();
     DDRD |= (1<<6); //LED port as output.
@@ -63,9 +63,24 @@ int main(void)
     
     while(1){
         /* ---- Communications ---- */
+        /*if (uart_available()){  //debug
+            char c = uart_getchar();
+            printNumber( c, HEX);
+            uart_putchar(c);
+        }*/
+        
         unsigned char done = process_incoming_packet( packet , &packet_position );
         if (done == 0) process_packet( packet, &fd );
-        //if (done == 0) { printNumber(fd.tx_throttle,DEC); print("\n"); }
+//        if (done == 0) {
+//            print("pkt [");
+//            if (packet[2] == SETTINGS_COMM) { print("SETTINGS_COMM,"); uart_putchar(packet[3]); } 
+//            else if (packet[3] == FULL_REMOTE) print("FULL_REMOTE");
+//            print("](");
+//            printNumber(done,DEC);
+//            print(") th=");
+//            printNumber(fd.tx_throttle,DEC);
+//            print("\n"); 
+//        }
         
         //PORTD = (i%300 > 100)? (PORTD|(1<<6)) : (PORTD & ~(1<<6));
         if ((i/20/10)%2) FakePWM0(6,((i/20)%10),10); //fade in
@@ -82,6 +97,17 @@ int main(void)
                 pitch_offset =  pitch.update(sensor_vals.pitch, (signed)(fd.tx_pitch-1500) );
                 roll_offset  =  roll.update(-sensor_vals.roll,  (signed)(fd.tx_roll -1500) );
                 yaw_offset   = -yaw.update(  sensor_vals.yaw,   (signed)(fd.tx_yaw  -1500) );
+                
+                if (i%150==0) {
+                    print("snsrs:<p,r,y> [");
+                    printNumber(sensor_vals.pitch,DEC); print(",");
+                    printNumber(sensor_vals.roll,DEC); print(",");
+                    printNumber(sensor_vals.yaw,DEC); print("]\t\t");
+                    print("pid: [");
+                    printNumber(pitch_offset,DEC); print(",");
+                    printNumber(roll_offset,DEC); print(",");
+                    printNumber(yaw_offset,DEC); print("]\n");
+                }
             }
             /* ---- Motor Control ---- */
             if (fd.armed >= 3){
@@ -118,26 +144,42 @@ int main(void)
                 }
             }
             else { //not armed.
-                if (i%50==0) {
+                if (fd.user_feedback_i) {
+                    if ((fd.user_feedback_m == 0) && (i%100==0)){
+                        //print("user feedback! "); printNumber(fd.user_feedback_i,DEC); print("\n");
+                        if (fd.user_feedback_i & 0x01) write_motors( SERVO_Notif, SERVO_Notif, SERVO_Notif, SERVO_Notif );
+                        else write_motors_zero(); //TODO: fix for tricopter..
+                        fd.user_feedback_i -= 1;
+                    }
+                }
+                
+                else if (i%50==0) {
                     if (fd.config.flying_mode == TRICOPTER_MODE) write_motors(SERVO_MID,SERVO_MIN,SERVO_MIN,SERVO_MIN);
                     else write_motors_zero();
                 }
                 if (fd.please_update_sensors){ //allows the user interface task to zero the sensor values.
                     fd.please_update_sensors = 0;
-                    zero_wii_sensors(&fd.zero_data);
+                    char successful_reads = zero_wii_sensors(&fd.zero_data);
                     fd.store_eeprom_zero_data();
-                    //pulse_motors(3, 200);
+                    fd.user_feedback_i = 6;
+
+                    print("sensors updated, ");
+                    printNumber(successful_reads,DEC); 
+                    print(" reads, ");
+                    printNumber(fd.zero_data.pitch,DEC); print(",");
+                    printNumber(fd.zero_data.roll,DEC); print(",");
+                    printNumber(fd.zero_data.yaw,DEC); print("\n");
                 }
                 fd.command_used_number++;
             }
         }
+
         
-        if (i%100 == 0) { //this is 1/100th = 40Hz, max sonar refresh is 20Hz if you want
+        /*if (i%100 == 0) { //this is 1/100th = 40Hz, max sonar refresh is 20Hz if you want
             uint16_t sonar_val = analogRead(8);
-            
             uint8_t data[2] = { sonar_val, (sonar_val >> 8)  };
             send_packet(TELEM_FEEDBACK, ALTITUDE, data, 2 );
-        }
+        }*/
         
         i++;
         _delay_ms(1);

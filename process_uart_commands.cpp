@@ -43,6 +43,7 @@ void process_packet( uint8_t * packet, FlightData * fd ) {
                 // enable flying (arm it) when yaw-> throttle==min.
                 if (values[2] > MAX_SAFETY && fd->armed == 1) {
                     fd->armed = 3; //armed=3 means ready to fly
+                    fd->user_feedback_i = fd->user_feedback_m = 0; //clear any user feedback.
                     //if (fd->telem_mode) rprintf("armed\n");
                 }
                 //armed=1 means we've gotten one packet with yaw>MINCHECK
@@ -84,6 +85,8 @@ void process_packet( uint8_t * packet, FlightData * fd ) {
                     fd->please_update_sensors = 1;
                 break;
             }
+            //case 't':	// Telemetry mode (debug vs off)
+            //{ fd->telem_mode = !(fd->telem_mode); }
             /*case 'm':	// pulse single motor
             {
                 //FRONTMOTORPIN,REARMOTORPIN, LEFTMOTORPIN, RIGHTMOTORPIN
@@ -124,7 +127,7 @@ void process_packet( uint8_t * packet, FlightData * fd ) {
                     rprintf("\nflying_mode=%i led_mode=%i xy-scale:%i,yaw:%i\n\n",fd->config.flying_mode, fd->config.led_mode,
                             fd->config.pitch_roll_tx_scale, fd->config.yaw_tx_scale);
                 }*/
-                if (! fd->armed) { fd->user_feedback = 12; }
+                if (! fd->armed) { fd->user_feedback_i = 2; }
                 
                 break; // <- NO BREAK, I want it to send the PIDs back.
             }
@@ -143,7 +146,7 @@ void process_packet( uint8_t * packet, FlightData * fd ) {
                 break;
             }
             case '$':{	//TEMPORARY!!! pulse pattern to test pin direction.
-                fd->user_feedback = 100;
+                //fd->user_feedback = 100;
                 break;
             }
         }

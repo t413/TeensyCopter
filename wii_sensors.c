@@ -33,26 +33,27 @@ uint8_t init_wii_sensors(void){
 
 uint8_t zero_wii_sensors(SENSOR_DATA *zero_data){
 	uint8_t successful_reads = 0;
-	SENSOR_DATA vals = {0};
-	*zero_data = vals; //zero the data.
-	SENSOR_DATA dummy_zero = { 0 };
+	SENSOR_DATA dummy_zero = { 0 }; //to pass to the update function so we get zeroed values.
+	int32_t p=0,r=0,y=0; //to store a sum of each read.
 
 	for (int i=0;i<15;i++)
 	{
+        SENSOR_DATA vals; //to store each update to, temporarily.
 		if (update_wii_data(&vals, &dummy_zero) == 1)
 		{
-			zero_data->yaw   += vals.yaw;
-			zero_data->pitch += vals.pitch;
-			zero_data->roll  += vals.roll;
+			p += vals.pitch;
+			r += vals.roll;
+			y += vals.yaw;
 			successful_reads++;
 		}
         _delay_ms(10);
 		//vTaskDelay(10);
 	}
-	zero_data->yaw   = zero_data->yaw   / successful_reads;
-	zero_data->pitch = zero_data->pitch / successful_reads;
-	zero_data->roll  = zero_data->roll  / successful_reads;
-	if (successful_reads<1){
+	zero_data->pitch = p / successful_reads;
+	zero_data->roll  = r / successful_reads;
+	zero_data->yaw   = y / successful_reads;
+	
+    if (successful_reads<1){
 		zero_data->yaw = 0;
 		zero_data->pitch = 0;
 		zero_data->roll = 0;

@@ -21,7 +21,7 @@ extern "C" {
 #define TWI_SRX   3
 #define TWI_STX   4
     
-    void twi_init(void);
+    void twi_init(unsigned long);
     void twi_setAddress(uint8_t);
     uint8_t twi_readFrom(uint8_t, uint8_t*, uint8_t);
     uint8_t twi_writeTo(uint8_t, uint8_t*, uint8_t, uint8_t);

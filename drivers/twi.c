@@ -59,7 +59,7 @@ static volatile uint8_t twi_error;
  * Input    none
  * Output   none
  */
-void twi_init(void)
+void twi_init(unsigned long speed) //use something like 100000 (100kHz)
 {
     // initialize state
     twi_state = TWI_READY;
@@ -70,7 +70,7 @@ void twi_init(void)
     // initialize twi prescaler and bit rate
     cbi(TWSR, TWPS0);
     cbi(TWSR, TWPS1);
-    TWBR = ((F_CPU / (100000)) - 16) / 2; //50 KHz
+    TWBR = ((F_CPU / (speed)) - 16) / 2; //50 KHz
     
     /* twi bit rate formula from atmega128 manual pg 204
      SCL Frequency = CPU Clock Frequency / (16 + (2 * TWBR))

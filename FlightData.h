@@ -32,7 +32,8 @@ public:
     int16_t tx_throttle, tx_yaw, tx_pitch, tx_roll;
     unsigned int command_used_number;
     unsigned char please_update_sensors;
-    unsigned int user_feedback;
+    uint16_t user_feedback_m;
+    uint16_t user_feedback_i;
     
     struct {
         PID * pid_roll;
