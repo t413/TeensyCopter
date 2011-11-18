@@ -95,9 +95,11 @@ void process_packet( uint8_t * packet, FlightData * fd ) {
                 break;
             }*/
             case REMOTE_2_QUAD_SETTINGS: {   // update PID values
-                print("REMOTE_2_QUAD_SETTINGS\n");
+                print("REMOTE_2_QUAD_SETTINGS: ");
                 int16_t values[15] = {0};
                 decode_some_int16s(packet+5, values, packet[4]/2 ); //should be 9.
+                
+                for (int i = 0; i < (packet[4]/2); i++) { printNumber(values[i],DEC); print("|"); }
                 
                 fd->config.pid_pitch->p = values[0];
                 fd->config.pid_pitch->i = values[1];
@@ -116,8 +118,10 @@ void process_packet( uint8_t * packet, FlightData * fd ) {
                 fd->config.led_mode = values[12];
                 
                 fd->store_to_eeprom();
+                print("scale now is: "); printNumber(fd->config.pitch_roll_tx_scale, DEC);
+                print("\n");
                 
-                print("pitch[] = "); printNumber(values[0],DEC); print(" "); printNumber(values[1],DEC); print(" "); printNumber(values[2],DEC);  print("\n");
+                //print("pitch[] = "); printNumber(values[0],DEC); print(" "); printNumber(values[1],DEC); print(" "); printNumber(values[2],DEC);  print("\n");
                 
                 /*if (fd->telem_mode) {
                     rprintf("\n updated pids to(*10): %i,%i,%i,%i,%i,%i,%i,%i,%i",

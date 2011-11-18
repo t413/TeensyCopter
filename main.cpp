@@ -11,7 +11,7 @@ extern "C" {
 #include "drivers/uart.h"
 #include "drivers/twi.h"
 #include "drivers/pwm.h"
-#include "altitude_sonar.h"
+#include "interrupt_timer.h"
 #include "pid.h"
 #include "ser_pkt.h"
 #include "wii_sensors.h"
@@ -26,7 +26,7 @@ int16_t limit(int16_t, int16_t, int16_t);
 
 int main(void)
 {
-    CPU_PRESCALE(0);  // set for 16 MHz clock
+    CPU_PRESCALE(1);  // set for 16 MHz clock
     /*--setup busses--*/
     pwm_init();
     usb_init();
@@ -61,6 +61,7 @@ int main(void)
     unsigned char packet_position = 0;
     unsigned long i = 0;
     
+    uint8_t old_resets = 0;
     while(1){
         /* ---- Communications ---- */
         /*if (uart_available()){  //debug
@@ -71,16 +72,32 @@ int main(void)
         
         unsigned char done = process_incoming_packet( packet , &packet_position );
         if (done == 0) process_packet( packet, &fd );
-//        if (done == 0) {
-//            print("pkt [");
-//            if (packet[2] == SETTINGS_COMM) { print("SETTINGS_COMM,"); uart_putchar(packet[3]); } 
-//            else if (packet[3] == FULL_REMOTE) print("FULL_REMOTE");
-//            print("](");
-//            printNumber(done,DEC);
-//            print(") th=");
-//            printNumber(fd.tx_throttle,DEC);
-//            print("\n"); 
-//        }
+        if (done == 0) {
+            print("pkt [");
+            if (packet[2] == SETTINGS_COMM) { print("SETTINGS_COMM,"); uart_putchar(packet[3]); } 
+            else if (packet[3] == FULL_REMOTE) print("FULL_REMOTE");
+            else {
+                print("packet: ");
+                for (int i = 0; i < (5+ packet[4] +7); i++){ printNumber(packet[i],HEX); print("|"); }
+            }
+            print("\n"); 
+        }
+        
+        if (i%50==0){ //only update every 200ms.
+            unsigned long timing_array[8] = {0};
+            uint8_t resets = get_ppm_timings(timing_array);
+            if (resets != old_resets){
+                resets = old_resets;
+                for (int i = 0; i<8; i++) {
+                    print("|");
+                    printNumber(timing_array[i],DEC);
+                }
+    //            print("  ");
+    //            printNumber((F_CPU >> ((CLKPR & 0x0F) + ((TCCR0B & 0x07)-1)*3)),DEC);
+                print("\n");
+            }
+        }
+
         
         //PORTD = (i%300 > 100)? (PORTD|(1<<6)) : (PORTD & ~(1<<6));
         if ((i/20/10)%2) FakePWM0(6,((i/20)%10),10); //fade in
@@ -98,7 +115,7 @@ int main(void)
                 roll_offset  =  roll.update(-sensor_vals.roll,  (signed)(fd.tx_roll -1500) );
                 yaw_offset   = -yaw.update(  sensor_vals.yaw,   (signed)(fd.tx_yaw  -1500) );
                 
-                if (i%150==0) {
+                /*if (i%150==0) {
                     print("snsrs:<p,r,y> [");
                     printNumber(sensor_vals.pitch,DEC); print(",");
                     printNumber(sensor_vals.roll,DEC); print(",");
@@ -107,7 +124,7 @@ int main(void)
                     printNumber(pitch_offset,DEC); print(",");
                     printNumber(roll_offset,DEC); print(",");
                     printNumber(yaw_offset,DEC); print("]\n");
-                }
+                }*/
             }
             /* ---- Motor Control ---- */
             if (fd.armed >= 3){
