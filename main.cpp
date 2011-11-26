@@ -21,18 +21,26 @@ extern "C" {
 
 #define CPU_PRESCALE(n)	(CLKPR = 0x80, CLKPR = (n))
 int16_t limit(int16_t, int16_t, int16_t);
-#define FakePWM0(port,val,period) PORTD = ((i %(period))>(val)) ? (PORTD|(1<<(port))) : (PORTD&~(1<<(port)))
+long map(long x, long in_min, long in_max, long out_min, long out_max);
+#define FakePWM0(port,val,period,incrcng_cntr) PORTD = ((incrcng_cntr %(period))>(val)) ? (PORTD|(1<<(port))) : (PORTD&~(1<<(port)))
+
+#define zero_motors_and_servos() {\
+if (fd.config.flying_mode == TRICOPTER_MODE) { write_motors(SERVO_MID,SERVO_MIN,SERVO_MIN,SERVO_MIN); } \
+else if (fd.config.flying_mode == TWINCOPTER_MODE) { write_motors(SERVO_MID,SERVO_MIN,SERVO_MID,SERVO_MIN); }\
+else { write_motors_zero(); } }
 
 
 int main(void)
 {
-    CPU_PRESCALE(1);  // set for 16 MHz clock
+    CPU_PRESCALE(0);  // set for 16 MHz clock
     /*--setup busses--*/
     pwm_init();
     usb_init();
     twi_init(10000);
     uart_init(115200);
     timer0_init();
+    ppm_timing_read_init();
+    
     DDRD |= (1<<6); //LED port as output.
     _delay_ms(10);
     
@@ -42,34 +50,24 @@ int main(void)
     
     /*--setup data storage--*/
     FlightData fd;  //create the control and settings object. the constructor fills in defaults
-    PID pitch, roll, yaw, alt; //create PID control system objects
-    fd.config.pid_pitch = &pitch; //give flight settings reference to the PID objects ..
-    fd.config.pid_roll = &roll;
-    fd.config.pid_yaw = &yaw;
-    fd.config.pid_alt = &alt;
-    fd.load_from_eeprom(); //pulls stored values from eeprom
-    if (fd.config.flying_mode == TRICOPTER_MODE) write_motors(SERVO_MID,SERVO_MIN,SERVO_MIN,SERVO_MIN);
-    else write_motors_zero();
+    //fd.load_from_eeprom(); //pulls stored values from eeprom
+    fd.config.flying_mode = X_MODE; //TEMPORARY!!!
+    zero_motors_and_servos();
     
-    print("pitch ["); printNumber( pitch.p ,DEC); print(",");
-    printNumber( pitch.i ,DEC); print(",");
-    printNumber( pitch.d ,DEC); print("]");
-    print("flying mode = ");printNumber(fd.config.flying_mode,DEC);print("\n");
     
 	short pitch_offset = 0,roll_offset = 0,yaw_offset = 0;
     unsigned char packet[128] = "";
     unsigned char packet_position = 0;
     unsigned long i = 0;
-    
+    unsigned long last_comm=0, last_sensors=0;
+    uint8_t led_clk_scl = 4; //used for LED mode
     uint8_t old_resets = 0;
+    
     while(1){
-        /* ---- Communications ---- */
-        /*if (uart_available()){  //debug
-            char c = uart_getchar();
-            printNumber( c, HEX);
-            uart_putchar(c);
-        }*/
+        unsigned long t_tics = tics();
+        unsigned long t_current = t_tics >> 11; //better than dividing by 2000 to get ms
         
+        /* ---- Serial Communication ---- */
         unsigned char done = process_incoming_packet( packet , &packet_position );
         if (done == 0) process_packet( packet, &fd );
         if (done == 0) {
@@ -83,39 +81,72 @@ int main(void)
             print("\n"); 
         }
         
-        if (i%50==0){ //only update every 200ms.
+        /* ---- PPM Radio Communication ---- */
+        if ((t_current-last_comm) >= 50) { //only update every 50ms.
             unsigned long timing_array[8] = {0};
             uint8_t resets = get_ppm_timings(timing_array);
-            if (resets != old_resets){
-                resets = old_resets;
-                for (int i = 0; i<8; i++) {
-                    print("|");
-                    printNumber(timing_array[i],DEC);
+            if ((resets != old_resets)&&(resets >= 0)) {
+                old_resets = resets;
+                
+                int16_t min_scl[] = {3679,3583,3677,2534};
+                int16_t max_scl[] = {2494,2632,2365,3665};
+                for (uint8_t i = 0; i<4; i++) {
+                    fd.tx_values[i] = limit(map(timing_array[i],min_scl[i],max_scl[i],1000,2000), 1000,2000);
                 }
-    //            print("  ");
-    //            printNumber((F_CPU >> ((CLKPR & 0x0F) + ((TCCR0B & 0x07)-1)*3)),DEC);
+                
+                //print values.
+                printNumber(fd.tx_values[0],DEC); print(",");
+                printNumber(fd.tx_values[1],DEC); print(",");
+                printNumber(fd.tx_values[2],DEC); print(",");
+                printNumber(fd.tx_values[3],DEC); print(",");
                 print("\n");
-            }
+                
+                
+                //code pulled from process_packet()
+                if (1) { 
+                    fd.command_used_number = 0;
+                    if (fd.armed == 5) {fd.armed = 3;} //lost communication, no longer!
+                    if (fd.tx_values[tx_throttle] < MIN_SAFETY) {
+                        fd.roll.zero(); fd.pitch.zero(); fd.yaw.zero(); //0 integral error
+                        if (fd.tx_values[tx_yaw] > MAX_SAFETY && fd.armed == 1) { // enable flying (arm it) when yaw-> throttle==min.
+                            fd.armed = 3; //armed=3 means ready to fly
+                            fd.user_feedback_i = fd.user_feedback_m = 0; //clear any user feedback.
+                            print("armed\n");
+                        }
+                        if (fd.tx_values[tx_yaw] > MAX_SAFETY) fd.armed |= 1;
+                        if (fd.tx_values[tx_yaw] < MIN_SAFETY)  {  //disarm when yaw
+                            print("DIS-armed\n");
+                            fd.armed = 0;
+                            zero_motors_and_servos();
+                        }
+                        if ((fd.tx_values[tx_yaw] < MIN_SAFETY) && (fd.tx_values[tx_roll] > MAX_SAFETY) && (fd.tx_values[tx_pitch] < MIN_SAFETY))
+                        { fd.please_update_sensors = 1; } //zero sensors.
+                    }
+                }
+                led_clk_scl = 2; //change LED fade speed to be slower.
+            } else { led_clk_scl = 4; }
+            last_comm = t_current;
         }
 
         
         //PORTD = (i%300 > 100)? (PORTD|(1<<6)) : (PORTD & ~(1<<6));
-        if ((i/20/10)%2) FakePWM0(6,((i/20)%10),10); //fade in
-        else FakePWM0(6,10-((i/20)%10),10); //fade out
+        #define pwm_steps 20
+        if (((t_current >> led_clk_scl)/pwm_steps)%2) FakePWM0(6,(((t_current >> led_clk_scl))%pwm_steps),pwm_steps,t_tics); //fade in
+        else FakePWM0(6,pwm_steps-(((t_current >> led_clk_scl))%pwm_steps),pwm_steps,t_tics); //fade out
         
         /* ---- Control System ---- */
-        if (i%5==0){ //only update every 5ms.
+        if ((t_current-last_sensors) >= 5) { //only update every 5ms.
             unsigned char data_type = update_wii_data(&sensor_vals, &fd.zero_data);
             if (data_type == 1){
-                //pitch_offset =  ((signed)(fd.tx_pitch-1500)-sensor_vals.pitch) * 300 /1500.00;
-                //roll_offset  =  ((signed)(fd.tx_roll -1500)+sensor_vals.roll ) * 30 /150.00;
-                //yaw_offset   = -((signed)(fd.tx_yaw  -1500)-sensor_vals.yaw  ) * 40 /150.00;
+                //pitch_offset =  (-(float)(fd.tx_values[tx_pitch]-1500)-(float)sensor_vals.pitch) * 380.00 / 1500.00;
+                //roll_offset  =  (-(float)(fd.tx_values[tx_roll] -1500)+(float)sensor_vals.roll ) * 380.00 / 1500.00;
+                //yaw_offset   = -(-(float)(fd.tx_values[tx_yaw]  -1500)+(float)sensor_vals.yaw  ) * 700.00 / 1500.00;
                 
-                pitch_offset =  pitch.update(sensor_vals.pitch, (signed)(fd.tx_pitch-1500) );
-                roll_offset  =  roll.update(-sensor_vals.roll,  (signed)(fd.tx_roll -1500) );
-                yaw_offset   = -yaw.update(  sensor_vals.yaw,   (signed)(fd.tx_yaw  -1500) );
+                pitch_offset =  fd.pitch.update(sensor_vals.pitch,-(signed)(fd.tx_values[tx_pitch]-1500) );
+                roll_offset  =  fd.roll.update(-sensor_vals.roll, -(signed)(fd.tx_values[tx_roll] -1500) );
+                yaw_offset   = -fd.yaw.update( -sensor_vals.yaw,  -(signed)(fd.tx_values[tx_yaw]  -1500) );
                 
-                /*if (i%150==0) {
+                if (0){//i%150==0) {
                     print("snsrs:<p,r,y> [");
                     printNumber(sensor_vals.pitch,DEC); print(",");
                     printNumber(sensor_vals.roll,DEC); print(",");
@@ -123,39 +154,54 @@ int main(void)
                     print("pid: [");
                     printNumber(pitch_offset,DEC); print(",");
                     printNumber(roll_offset,DEC); print(",");
-                    printNumber(yaw_offset,DEC); print("]\n");
-                }*/
+                    printNumber(yaw_offset,DEC); print("]  ");
+                    printNumber(OCR1A,DEC); print(",");
+                    printNumber(OCR1B,DEC); print(",");
+                    printNumber(OCR1C,DEC); print(",");
+                    printNumber(OCR3A,DEC); print("\n");
+                }
             }
             /* ---- Motor Control ---- */
             if (fd.armed >= 3){
                 if (fd.config.flying_mode == PLUS_MODE){
-                    write_servo(0, fd.tx_throttle + pitch_offset - yaw_offset); //front
-                    write_servo(1, fd.tx_throttle - pitch_offset - yaw_offset); //back
-                    write_servo(2, fd.tx_throttle + roll_offset + yaw_offset);  //left
-                    write_servo(3, fd.tx_throttle - roll_offset + yaw_offset);  //right
+                    //print("PLUS_MODE:");
+                    write_servo(0, fd.tx_values[tx_throttle] + pitch_offset - yaw_offset); //front =(right bottom port)
+                    write_servo(1, fd.tx_values[tx_throttle] - pitch_offset - yaw_offset); //back  (right top port)
+                    write_servo(2, fd.tx_values[tx_throttle] + roll_offset + yaw_offset);  //left  (left bottom port)
+                    write_servo(3, fd.tx_values[tx_throttle] - roll_offset + yaw_offset);  //right (left top port)
                 }
                 else if (fd.config.flying_mode == X_MODE){
-                    write_servo(0, fd.tx_throttle + pitch_offset + roll_offset - yaw_offset); //Front = Front/Right
-                    write_servo(1, fd.tx_throttle - pitch_offset - roll_offset - yaw_offset); //Back = Left/Rear
-                    write_servo(2, fd.tx_throttle - pitch_offset + roll_offset + yaw_offset); //Left = Front/Left
-                    write_servo(3, fd.tx_throttle + pitch_offset - roll_offset + yaw_offset); //Right = Right/Rear
+                    write_servo(0, fd.tx_values[tx_throttle] - pitch_offset + roll_offset + yaw_offset); //Right/Rear
+                    write_servo(1, fd.tx_values[tx_throttle] + pitch_offset + roll_offset - yaw_offset); //Right/Front
+                    write_servo(2, fd.tx_values[tx_throttle] - pitch_offset - roll_offset - yaw_offset); //Left/Rear
+                    write_servo(3, fd.tx_values[tx_throttle] + pitch_offset - roll_offset + yaw_offset); //Left/Front
                 }
+                /*right bottom port
+                 right top port   
+                 left bottom port 
+                 left top port    */
                 else if (fd.config.flying_mode == TRICOPTER_MODE){
                     write_servo(0, 1500 - yaw_offset); //servo
-                    write_servo(1, fd.tx_throttle - pitch_offset); //Back
-                    write_servo(2, fd.tx_throttle + pitch_offset/2 - roll_offset ); //left
-                    write_servo(3, fd.tx_throttle + pitch_offset/2 + roll_offset ); //right
+                    write_servo(1, fd.tx_values[tx_throttle] - pitch_offset); //Back
+                    write_servo(2, fd.tx_values[tx_throttle] + pitch_offset/2 - roll_offset ); //left
+                    write_servo(3, fd.tx_values[tx_throttle] + pitch_offset/2 + roll_offset ); //right
+                }
+                //pitch down, roll right, yaw right (looking from above) are all positive offset.
+                else if (fd.config.flying_mode == TWINCOPTER_MODE){
+                    write_servo(0, 1500 + pitch_offset); //servo right
+                    write_servo(1, fd.tx_values[tx_throttle] + roll_offset); //motor right
+                    write_servo(2, 1500 - yaw_offset + pitch_offset ); //servo left
+                    write_servo(3, fd.tx_values[tx_throttle] - roll_offset ); //motor left
                 }
                 
                 if (fd.command_used_number++ > 100) { //loss of communication.
                     fd.armed = 5; //slow shut down mode
-                    fd.tx_yaw = 1500; fd.tx_pitch = 1500; fd.tx_roll = 1500; //neutral control values.
+                    fd.tx_values[tx_yaw] = 1500; fd.tx_values[tx_pitch] = 1500; fd.tx_values[tx_roll] = 1500; //neutral control values.
                     
                     //subtract from the throttle (see auto_land_plot.numbers document)
-                    fd.tx_throttle -= (fd.command_used_number-100)/(1<<6);
-                    if (fd.tx_throttle < 1100) {
-                        if (fd.config.flying_mode == TRICOPTER_MODE) write_motors(SERVO_MID,SERVO_MIN,SERVO_MIN,SERVO_MIN);
-                        else write_motors_zero();
+                    fd.tx_values[tx_throttle] -= (fd.command_used_number-100)/(1<<6);
+                    if (fd.tx_values[tx_throttle] < 1100) {
+                        zero_motors_and_servos();
                         fd.armed = 0;
                     } //TODO: change the 2^___ (a set-able variable)
                 }
@@ -165,14 +211,13 @@ int main(void)
                     if ((fd.user_feedback_m == 0) && (i%100==0)){
                         //print("user feedback! "); printNumber(fd.user_feedback_i,DEC); print("\n");
                         if (fd.user_feedback_i & 0x01) write_motors( SERVO_Notif, SERVO_Notif, SERVO_Notif, SERVO_Notif );
-                        else write_motors_zero(); //TODO: fix for tricopter..
+                        else zero_motors_and_servos(); //TODO: fix for tricopter..
                         fd.user_feedback_i -= 1;
                     }
                 }
                 
                 else if (i%50==0) {
-                    if (fd.config.flying_mode == TRICOPTER_MODE) write_motors(SERVO_MID,SERVO_MIN,SERVO_MIN,SERVO_MIN);
-                    else write_motors_zero();
+                    zero_motors_and_servos();
                 }
                 if (fd.please_update_sensors){ //allows the user interface task to zero the sensor values.
                     fd.please_update_sensors = 0;
@@ -189,6 +234,8 @@ int main(void)
                 }
                 fd.command_used_number++;
             }
+            i+=5;
+            last_sensors = t_current;
         }
 
         
@@ -198,8 +245,7 @@ int main(void)
             send_packet(TELEM_FEEDBACK, ALTITUDE, data, 2 );
         }*/
         
-        i++;
-        _delay_ms(1);
+        _delay_us(100);
     }
     return 0;
 }
@@ -208,4 +254,8 @@ int16_t limit(int16_t in, int16_t bottom, int16_t upper){
 	if (in<bottom) return bottom;
 	else if (in>upper) return upper;
 	return in;
+}
+
+long map(long x, long in_min, long in_max, long out_min, long out_max) {
+    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }

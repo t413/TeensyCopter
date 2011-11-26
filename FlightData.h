@@ -1,14 +1,18 @@
 #ifndef FLIGHTDATA_H
 #define FLIGHTDATA_H
 
+#include <inttypes.h>
 #include "pid.h"
 #include "wii_sensors.h"
 
 
 /*----flying_mode----*/
-#define X_MODE 0
-#define PLUS_MODE 1
-#define TRICOPTER_MODE 2
+typedef enum FlyingMode {
+    X_MODE = 0,
+    PLUS_MODE,
+    TRICOPTER_MODE,
+    TWINCOPTER_MODE,
+} FlyingMode;
 
 /*----armed----*/
 #define SAFTY_ARMING 1
@@ -23,24 +27,29 @@
 #define MAX_SAFETY MAX_CONTROL - 100
 #define MIN_THROTTLE MIN_CONTROL + 100
 
+//used for tx_values array.
+typedef enum TX_channels {
+    tx_yaw = 0,
+    tx_pitch,
+    tx_throttle,
+    tx_roll
+} TX_channels;
 
 class FlightData{
 public:
     unsigned char armed;
     SENSOR_DATA zero_data;
     
-    int16_t tx_throttle, tx_yaw, tx_pitch, tx_roll;
+    uint16_t tx_values[4];
+    uint16_t last_tx[4];
     unsigned int command_used_number;
     unsigned char please_update_sensors;
     uint16_t user_feedback_m;
     uint16_t user_feedback_i;
     
+    PID pitch, roll, yaw, alt;
     struct {
-        PID * pid_roll;
-        PID * pid_pitch;
-        PID * pid_yaw;
-        PID * pid_alt;
-        uint8_t flying_mode; //X_MODE or PLUS_MODE
+        FlyingMode flying_mode; //X_MODE or PLUS_MODE
         uint8_t led_mode;
         int16_t pitch_roll_tx_scale;
         int16_t yaw_tx_scale;

@@ -39,10 +39,10 @@ void pwm_init(void) {
 
 
     /*-- set pins to outputs --*/
-    DDRB |= (1 << 5);
-    DDRB |= (1 << 6);
-    DDRB |= (1 << 7);
-    DDRC |= (1 << 6);
+    DDRB |= (1 << 5); //0  ->  right bottom port   OC1A
+    DDRB |= (1 << 6); //1  ->  right top port      OC1B
+    DDRB |= (1 << 7); //2  ->  left bottom port    OC1C
+    DDRC |= (1 << 6); //3  ->  left top port       OC3A
     // Set OCRA1 to something - Servo is based on 1 - 2ms pulse if 40000 = 20ms pulse whats between 1 and 2 (2200 TO 3800) 
 
 }
@@ -55,7 +55,7 @@ void write_servo(uint8_t which, uint16_t in_val){
     in_val = limit(in_val, SERVO_MIN, SERVO_MAX);
     
     switch (which){
-        case 0 : OCR1A = in_val; break;
+        case 0 : OCR1A = in_val; break; 
         case 1 : OCR1B = in_val; break; 
         case 2 : OCR1C = in_val; break; 
         case 3 : OCR3A = in_val; break; 

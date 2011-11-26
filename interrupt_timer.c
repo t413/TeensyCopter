@@ -36,20 +36,13 @@ void timer0_init(void){
     TCCR0B = (1<<CS01); //now is's clk/8..  | (1<<CS00); //sets prescale to clk/64
 	
     TIMSK0 = (1<<TOIE0); //Timer/Counter0 Overflow interrupt is enabled (overflow in Timer/Counter0 == inturrupt)
-
-
-	//enable pin change inturrupt on Digital Pin 8
-	PCMSK0 |= (1 << PCINT4); //enable port 8's interrupt spesifically
-	PCICR |= (1 << PCIE0);  //Any change on any enabled PCINT7..0 pin will cause an interrupt now.
-    
-    DDRF |= (1<<6); //F6 output.
 }
 
 ISR(TIMER0_OVF_vect)
 {
 	timer0_overflow_count++;
-//    if (PORTF & (1<<6)) { PORTF &= ~(1<<6); } //off
-//    else { PORTF |= (1<<6); } //on
+    if (PORTF & (1<<6)) { PORTF &= ~(1<<6); } //off
+    else { PORTF |= (1<<6); } //on
 }
 
 unsigned long tics(void) {
@@ -64,12 +57,7 @@ unsigned long tics(void) {
 }
 
 unsigned long millis(void) {
-	unsigned long m;
-	cli();
-	m = timer0_overflow_count;
-	sei();
-    m = m * MICROSECONDS_PER_TIMER0_OVERFLOW;
-	return m/1000;
+	return tics()/1000;
 }
 
 
@@ -82,7 +70,7 @@ unsigned long millis(void) {
 volatile unsigned long pulse_start_ms;  // saves start of pulse
 volatile unsigned char pulse_start_t0;
 
-#define NUM_CHANNELS_TO_RECIEVE 8
+#define NUM_CHANNELS_TO_RECIEVE 6
 volatile unsigned long timings[NUM_CHANNELS_TO_RECIEVE];
 volatile signed char position = -1;
 volatile uint8_t resets = 0;
@@ -91,11 +79,15 @@ volatile uint8_t resets = 0;
 /* 
  * PPM_Init  -  setup inturrupt for to read incoming ppm signal
  */
-//void ppm_timing_read_init(void) {
-//enable pin change inturrupt on Digital Pin 8
-//PCMSK0 |= (1 << PCINT0); //enable port 8's interrupt spesifically
-//PCICR |= (1 << PCIE0);  //Any change on any enabled PCINT7..0 pin will cause an interrupt now.
-//}
+void ppm_timing_read_init(void) {
+	//enable pin change inturrupt on Digital Pin 8
+	PCMSK0 |= (1 << PCINT4); //enable port 8's interrupt spesifically
+	PCICR |= (1 << PCIE0);  //Any change on any enabled PCINT7..0 pin will cause an interrupt now.
+    
+    DDRF |= (1<<6); //port F6 as output.
+}
+
+
 #define REAL_TIMER_FREQ (F_CPU >> ((CLKPR & 0x0F) + ((TCCR0B & 0x07)-1)*3))
 #define tic_timing_to_us(x) REAL_TIMER_FREQ //TODO: finish me.
 /* 
@@ -107,34 +99,32 @@ ISR(PCINT0_vect) {
         unsigned long m = timer0_overflow_count;
         unsigned char t0 = TCNT0;
         
+        if ((TIFR0 & _BV(TOV0)) && (t0 < 255)) { m++; } //fixes strange error, thanks arduino core's micros()!
+
         if ((m - pulse_start_ms) > (30)) {  //found sync pulse! TODO: change '30' to be dependent on REAL_TIMER_FREQ
             position = 0; 
-            resets++;
+            resets += 1;
         }
         else if (position < 0) {  //not found a sync pulse yet
             return; 
         }
         else {  //otherwise, increment position and record data!
             if (position >= NUM_CHANNELS_TO_RECIEVE) { return; }
-            timings[position++] = ((m<<8)+t0) - ((pulse_start_ms<<8) + pulse_start_t0);
+            timings[position++] = ((m<<8)|t0) - ((pulse_start_ms<<8) | pulse_start_t0);
         }
         pulse_start_ms = m;
         pulse_start_t0 = t0;
 	}
 }
 
-/* 
- * Get_Sonar_Pulse  -  returns integer ultrasonic measurement value
- * returns 0 if there's no new data since last checked
- * returns unsigned 16 bit integer of measurement
- * equation to convert to feet: (0.4336*sonar_value-7.284)/12
- */
-uint8_t get_ppm_timings(unsigned long * timing_array) {
+
+int8_t get_ppm_timings(unsigned long * timing_array) {
 	cli();
+    if (position < 0) { sei(); return -1; }
 	for (int i=0; i<8; i++) {
         timing_array[i] = timings[i];
     }
-    //position = -1;
+    position = -1;
     uint8_t r = resets;
 	sei();
     //scale by F_CPU/(CLKPR & 0x0F) == cpu freq

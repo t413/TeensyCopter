@@ -53,10 +53,8 @@ uint8_t zero_wii_sensors(SENSOR_DATA *zero_data){
 	zero_data->roll  = r / successful_reads;
 	zero_data->yaw   = y / successful_reads;
 	
-    if (successful_reads<1){
-		zero_data->yaw = 0;
-		zero_data->pitch = 0;
-		zero_data->roll = 0;
+    if (successful_reads<1) {
+		zero_data->yaw = zero_data->pitch = zero_data->roll = 0;
 	}
 	return successful_reads;
 }
@@ -68,13 +66,13 @@ uint8_t update_wii_data(SENSOR_DATA *vals, SENSOR_DATA *zer0){
 	{
 		if ( data[5]&0x02 ) //wm+ data
 		{
-			vals->yaw = (((data[3]>>2)<<8)+data[0]);
-			vals->pitch = (((data[5]>>2)<<8)+data[2]); //reversed picth and roll
-			vals->roll = (((data[4]>>2)<<8)+data[1]);
+			vals->yaw   = data[0] + ((data[3]>>2)<<8);
+			vals->pitch  = data[1] + ((data[4]>>2)<<8);
+			vals->roll = data[2] + ((data[5]>>2)<<8);
 			//use the slow/fast mode data
-			vals->yaw   = ((signed)((data[3]&0x02)>>1  ? vals->yaw/5   : vals->yaw))   - (signed)zer0->yaw;
-			vals->pitch = ((signed)((data[3]&0x01)     ? vals->pitch/5 : vals->pitch)) - (signed)zer0->pitch; //reversed too
-			vals->roll  = ((signed)((data[4]&0x02)>>1  ? vals->roll/5  : vals->roll))  - (signed)zer0->roll;
+			vals->yaw   = ((signed)((data[3]&0x02)  ? vals->yaw / 5   : vals->yaw)) - (signed)zer0->yaw;
+            vals->pitch = ((signed)((data[4]&0x02)  ? vals->pitch / 5  : vals->pitch)) - (signed)zer0->pitch;
+            vals->roll = ((signed)((data[3]&0x01)  ? vals->roll / 5 : vals->roll)) - (signed)zer0->roll;
 			return 1; //got wm+ data successfully
 		}
 		else //this is nunchuck data

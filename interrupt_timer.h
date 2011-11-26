@@ -14,8 +14,8 @@ void timer0_init(void);
 unsigned long millis(void);
 unsigned long tics(void);
     
-//void ppm_timing_read_init(void) {
-uint8_t get_ppm_timings(unsigned long * timing_array);
+void ppm_timing_read_init(void);
+int8_t get_ppm_timings(unsigned long * timing_array);
 
     
 #ifdef __cplusplus
