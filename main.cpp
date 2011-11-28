@@ -54,6 +54,10 @@ int main(void)
     fd.config.flying_mode = X_MODE; //TEMPORARY!!!
     zero_motors_and_servos();
     
+    fd.pitch.p = fd.roll.p = 350;
+    fd.pitch.i = fd.roll.i = 3;
+    fd.yaw.p = 600;
+
     
 	short pitch_offset = 0,roll_offset = 0,yaw_offset = 0;
     unsigned char packet[128] = "";

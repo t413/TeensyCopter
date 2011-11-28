@@ -20,8 +20,8 @@ PID::PID(int16_t new_p, int16_t new_i, int16_t new_d) {
 }
 
 PID::PID(void) {
-    p = 350;
-    i = 1;
+    p = 0;
+    i = 0;
     d = 0;
 }
 
