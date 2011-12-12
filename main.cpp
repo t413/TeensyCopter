@@ -13,13 +13,13 @@ extern "C" {
 #include "drivers/pwm.h"
 #include "interrupt_timer.h"
 #include "pid.h"
-#include "ser_pkt.h"
 #include "wii_sensors.h"
 #include "FlightData.h"
-#include "process_uart_commands.h"
-#include "ser_pkt.h"
+#include "drivers/xbee_api.h"
+#include "drivers/xbee_protocol.h"
 
 #define CPU_PRESCALE(n)	(CLKPR = 0x80, CLKPR = (n))
+void process_packet( uint8_t * packet, FlightData * fd );
 int16_t limit(int16_t, int16_t, int16_t);
 long map(long x, long in_min, long in_max, long out_min, long out_max);
 #define FakePWM0(port,val,period,incrcng_cntr) PORTD = ((incrcng_cntr %(period))>(val)) ? (PORTD|(1<<(port))) : (PORTD&~(1<<(port)))
@@ -54,9 +54,9 @@ int main(void)
     fd.config.flying_mode = X_MODE; //TEMPORARY!!!
     zero_motors_and_servos();
     
-    fd.pitch.p = fd.roll.p = 350;
+    fd.pitch.p = fd.roll.p = 300;
     fd.pitch.i = fd.roll.i = 3;
-    fd.yaw.p = 600;
+    fd.yaw.p = 900;
 
     
 	short pitch_offset = 0,roll_offset = 0,yaw_offset = 0;
@@ -72,37 +72,27 @@ int main(void)
         unsigned long t_current = t_tics >> 11; //better than dividing by 2000 to get ms
         
         /* ---- Serial Communication ---- */
-        unsigned char done = process_incoming_packet( packet , &packet_position );
+        unsigned char done = xbee_api_recieve( packet , &packet_position );
         if (done == 0) process_packet( packet, &fd );
-        if (done == 0) {
-            print("pkt [");
-            if (packet[2] == SETTINGS_COMM) { print("SETTINGS_COMM,"); uart_putchar(packet[3]); } 
-            else if (packet[3] == FULL_REMOTE) print("FULL_REMOTE");
-            else {
-                print("packet: ");
-                for (int i = 0; i < (5+ packet[4] +7); i++){ printNumber(packet[i],HEX); print("|"); }
-            }
-            print("\n"); 
-        }
         
         /* ---- PPM Radio Communication ---- */
         if ((t_current-last_comm) >= 50) { //only update every 50ms.
             unsigned long timing_array[8] = {0};
             uint8_t resets = get_ppm_timings(timing_array);
-            if ((resets != old_resets)&&(resets >= 0)) {
+            if ((resets != old_resets)&&(resets >= 0)&&(timing_array[0] != 0)) {
                 old_resets = resets;
                 
-                int16_t min_scl[] = {3679,3583,3677,2534};
-                int16_t max_scl[] = {2494,2632,2365,3665};
+                const int16_t min_scl[] = {3679,3583,3677,2534};
+                const int16_t max_scl[] = {2494,2632,2365,3665};
                 for (uint8_t i = 0; i<4; i++) {
-                    fd.tx_values[i] = limit(map(timing_array[i],min_scl[i],max_scl[i],1000,2000), 1000,2000);
+                    fd.tx_values[i] = limit(map(timing_array[i],min_scl[i],max_scl[i],MIN_CONTROL,MAX_CONTROL), MIN_CONTROL,MAX_CONTROL);
                 }
                 
                 //print values.
-                printNumber(fd.tx_values[0],DEC); print(",");
-                printNumber(fd.tx_values[1],DEC); print(",");
-                printNumber(fd.tx_values[2],DEC); print(",");
-                printNumber(fd.tx_values[3],DEC); print(",");
+                printNumber(timing_array[0],DEC); print(",");
+                printNumber(timing_array[1],DEC); print(",");
+                printNumber(timing_array[2],DEC); print(",");
+                printNumber(timing_array[3],DEC); print(",");
                 print("\n");
                 
                 
@@ -198,9 +188,9 @@ int main(void)
                     write_servo(3, fd.tx_values[tx_throttle] - roll_offset ); //motor left
                 }
                 
-                if (fd.command_used_number++ > 100) { //loss of communication.
+                if (fd.command_used_number++ > 100) { //loss of communication when still armed
                     fd.armed = 5; //slow shut down mode
-                    fd.tx_values[tx_yaw] = 1500; fd.tx_values[tx_pitch] = 1500; fd.tx_values[tx_roll] = 1500; //neutral control values.
+                    fd.tx_values[tx_yaw] = fd.tx_values[tx_pitch] = fd.tx_values[tx_roll] = MID_CONTROL; //neutral control values.
                     
                     //subtract from the throttle (see auto_land_plot.numbers document)
                     fd.tx_values[tx_throttle] -= (fd.command_used_number-100)/(1<<6);
@@ -208,6 +198,10 @@ int main(void)
                         zero_motors_and_servos();
                         fd.armed = 0;
                     } //TODO: change the 2^___ (a set-able variable)
+                } 
+                //recovery: if we re-establish communication while it's in armed==5 mode then go back to armed=3.
+                else if ((fd.armed == 5) && (fd.command_used_number < 5)) { 
+                    fd.armed = 3; 
                 }
             }
             else { //not armed.
@@ -252,6 +246,76 @@ int main(void)
         _delay_us(100);
     }
     return 0;
+}
+
+
+void process_packet( uint8_t * packet, FlightData * fd ) {
+    if (packet[3] == 0x88) { //AT Command Response
+        xbee_at_cmd_response_t* cmdrx = (xbee_at_cmd_response_t *) &(packet[3]);
+        print("localAT");
+        uart_putchar(cmdrx->ap_cmd0);uart_putchar(cmdrx->ap_cmd1);
+        if (cmdrx->cmd_status) { print(" error "); }
+        if (cmdrx->ap_cmd0=='D' && cmdrx->ap_cmd1=='B') { 
+            print(" "); printNumber( (cmdrx->data<<8)|(*(&cmdrx->data+1)) ,DEC); print("dBm\n");
+        }
+    }
+    else if (packet[3] == 0x97) { //Remote AT Command Response
+        xbee_at_remote_cmd_response_t* cmdrx = (xbee_at_remote_cmd_response_t *) &(packet[3]);
+        if (cmdrx->ap_cmd0=='D' && cmdrx->ap_cmd1=='B') { 
+            print("recieved at "); printNumber( (cmdrx->data<<8)|(*(&cmdrx->data+1)) ,DEC); print("dBm\n");
+        }
+    }
+    else if (packet[3] == 0x90) { //Packet Received
+        //xbee_receive_packet_t* cmdrx = (xbee_receive_packet_t *) &(packet[3]);
+        xbee_pkt_tx_t* txp = (xbee_pkt_tx_t*) &(packet[15]); //assume it's a TX packet
+        if (txp->type == XBEE_PKT_TX) {
+            int16_t*values = txp->vals;
+            fd->tx_values[tx_roll]  = (values[0]-1500)*4/fd->config.pitch_roll_tx_scale+1500;
+            fd->tx_values[tx_pitch] = (values[1]-1500)*4/fd->config.pitch_roll_tx_scale+1500;
+            fd->tx_values[tx_yaw]   = (values[2]-1500)*4/fd->config.yaw_tx_scale+1500;
+            fd->tx_values[tx_throttle] = values[3];
+            
+            
+            fd->command_used_number = 0;
+            
+            if (fd->armed == 5) //lost communication, no longer!
+            {fd->armed = 3;}
+            
+            if (fd->tx_values[tx_throttle] < MIN_SAFETY) {
+                fd->roll.zero(); //zero the integral error
+                fd->pitch.zero(); //zero the integral error
+                fd->yaw.zero(); //zero the integral error
+                
+                // enable flying (arm it) when yaw-> throttle==min.
+                if (values[2] > MAX_SAFETY && fd->armed == 1) {
+                    fd->armed = 3; //armed=3 means ready to fly
+                    fd->user_feedback_i = fd->user_feedback_m = 0; //clear any user feedback.
+                    //if (fd->telem_mode) rprintf("armed\n");
+                }
+                //armed=1 means we've gotten one packet with yaw>MINCHECK
+                if (values[2] > MAX_SAFETY) fd->armed |= 1;
+                
+                if (values[2] < MIN_SAFETY)  {  //disarm when yaw
+                    fd->armed = 0;
+                    if (fd->config.flying_mode == TRICOPTER_MODE) write_motors(SERVO_MID,SERVO_MIN,SERVO_MIN,SERVO_MIN);
+                    else write_motors_zero();
+                }
+                
+                if ((values[2] < MIN_SAFETY) && (values[0] > MAX_SAFETY) && (values[1] < MIN_SAFETY))
+                { fd->please_update_sensors = 1; } //zero sensors.
+            }
+        }
+    }
+    else {
+        print("pkt [");
+        /*if (packet[2] == SETTINGS_COMM) { print("SETTINGS_COMM,"); uart_putchar(packet[3]); } 
+         else if (packet[3] == FULL_REMOTE) print("FULL_REMOTE");
+         else {*/
+        print("packet: ");
+        for (int i = 0; i < (3 + packet[2] + 1); i++){ printNumber(packet[i],HEX); print(" "); }
+        //}
+        print("\n"); 
+    }
 }
 
 int16_t limit(int16_t in, int16_t bottom, int16_t upper){

@@ -25,9 +25,9 @@ void process_packet( uint8_t * packet, FlightData * fd ) {
         if (packet[3] == FULL_REMOTE){
             int16_t values[4] = {0};
             decode_some_int16s(packet+5, values, 4 ); //should be 9.
-            fd->tx_values[tx_roll]  =  (values[0]-1500)*4/fd->config.pitch_roll_tx_scale+1500;
-            fd->tx_values[tx_pitch] = -(values[1]-1500)*4/fd->config.pitch_roll_tx_scale+1500;
-            fd->tx_values[tx_yaw]   =  (values[2]-1500)*4/fd->config.yaw_tx_scale+1500;
+            fd->tx_values[tx_roll]  = (values[0]-1500)*4/fd->config.pitch_roll_tx_scale+1500;
+            fd->tx_values[tx_pitch] = (values[1]-1500)*4/fd->config.pitch_roll_tx_scale+1500;
+            fd->tx_values[tx_yaw]   = (values[2]-1500)*4/fd->config.yaw_tx_scale+1500;
             fd->tx_values[tx_throttle] = values[3];
             
             fd->command_used_number = 0;

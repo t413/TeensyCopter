@@ -53,6 +53,7 @@ SRC = \
     drivers/twi.c \
     drivers/analog.c \
     drivers/eeprom.c \
+    drivers/xbee_api.c \
     ser_pkt.c \
     wii_sensors.c \
     interrupt_timer.c \
@@ -86,7 +87,7 @@ OBJDIR = .
 CPPSRC = $(TARGET).cpp \
     pid.cpp \
     FlightData.cpp \
-    process_uart_commands.cpp 
+#    process_uart_commands.cpp 
 
 
 # List Assembler source files here.
