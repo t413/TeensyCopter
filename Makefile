@@ -57,6 +57,7 @@ SRC = \
     ser_pkt.c \
     wii_sensors.c \
     interrupt_timer.c \
+    sprintf.c \
 
 # MCU name, you MUST set this to match the board you are using
 # type "make clean" after changing this, so all files will be rebuilt
@@ -87,7 +88,6 @@ OBJDIR = .
 CPPSRC = $(TARGET).cpp \
     pid.cpp \
     FlightData.cpp \
-#    process_uart_commands.cpp 
 
 
 # List Assembler source files here.

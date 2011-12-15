@@ -14,9 +14,9 @@ FlightData::FlightData( void ){
     zero_data = zd; //copy it.
     
     for (uint8_t i = 0; i<4; i++) {
-        tx_values[i] = last_tx[i] = MID_CONTROL;
+        tx_values[i] = MID_CONTROL;
     }
-    tx_values[tx_throttle] = last_tx[tx_throttle] = MIN_CONTROL;
+    tx_values[tx_throttle] = MIN_CONTROL;
     
     command_used_number = 0;
     please_update_sensors = 0;
@@ -28,6 +28,41 @@ FlightData::FlightData( void ){
     config.pitch_roll_tx_scale = 4;
     config.yaw_tx_scale = 4;
 }
+
+void FlightData::process_analogs( int16_t inroll, int16_t inpitch, int16_t inyaw, int16_t inthrottle) {
+    
+    tx_values[tx_roll]  = inroll;//(roll -1500)*4/config.pitch_roll_tx_scale+1500;
+    tx_values[tx_pitch] = inpitch;//(pitch-1500)*4/config.pitch_roll_tx_scale+1500;
+    tx_values[tx_yaw]   = inyaw;//(yaw  -1500)*4/config.yaw_tx_scale+1500;
+    tx_values[tx_throttle] = inthrottle;
+    
+    command_used_number = 0;
+    
+    if (armed == 5) //lost communication, no longer!
+    {armed = 3;}
+    
+    if (inthrottle < MIN_SAFETY) {
+        roll.zero(); //zero the integral error
+        pitch.zero(); //zero the integral error
+        yaw.zero(); //zero the integral error
+        
+        // enable flying (arm it) when yaw-> throttle==min.
+        if (inyaw > MAX_SAFETY && armed == 1) {
+            armed = 3; //armed=3 means ready to fly
+            user_feedback_i = user_feedback_m = 0; //clear any user feedback.
+            //if (telem_mode) rprintf("armed\n");
+        }
+        //armed=1 means we've gotten one packet with yaw>MINCHECK
+        if (inyaw > MAX_SAFETY) { armed |= 1; }
+        
+        if (inyaw < MIN_SAFETY) { armed = 0; } //disarm with min yaw
+        
+        if ((inyaw < MIN_SAFETY) && (inroll > MAX_SAFETY) && (inpitch < MIN_SAFETY))
+        { please_update_sensors = 1; } //zero sensors.
+    }
+}
+
+
 
 /*--load_eeprom_config--*/
 void FlightData::load_from_eeprom( void ){

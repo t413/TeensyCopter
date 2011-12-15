@@ -3,10 +3,12 @@
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
 #include <inttypes.h>
+#include <string.h>
 extern "C" {
     #include "drivers/usb_debug_only.h"
     #include "drivers/print.h"
     #include "drivers/analog.h"
+    #include "sprintf.h"
 }   
 #include "drivers/uart.h"
 #include "drivers/twi.h"
@@ -69,67 +71,52 @@ int main(void)
     
     while(1){
         unsigned long t_tics = tics();
-        unsigned long t_current = t_tics >> 11; //better than dividing by 2000 to get ms
+        fd.t_current = t_tics >> 11; //better than dividing by 2000 to get ms
         
         /* ---- Serial Communication ---- */
         unsigned char done = xbee_api_recieve( packet , &packet_position );
         if (done == 0) process_packet( packet, &fd );
         
+        
         /* ---- PPM Radio Communication ---- */
-        if ((t_current-last_comm) >= 50) { //only update every 50ms.
-            unsigned long timing_array[8] = {0};
-            uint8_t resets = get_ppm_timings(timing_array);
-            if ((resets != old_resets)&&(resets >= 0)&&(timing_array[0] != 0)) {
-                old_resets = resets;
-                
-                const int16_t min_scl[] = {3679,3583,3677,2534};
-                const int16_t max_scl[] = {2494,2632,2365,3665};
-                for (uint8_t i = 0; i<4; i++) {
-                    fd.tx_values[i] = limit(map(timing_array[i],min_scl[i],max_scl[i],MIN_CONTROL,MAX_CONTROL), MIN_CONTROL,MAX_CONTROL);
-                }
-                
-                //print values.
-                printNumber(timing_array[0],DEC); print(",");
-                printNumber(timing_array[1],DEC); print(",");
-                printNumber(timing_array[2],DEC); print(",");
-                printNumber(timing_array[3],DEC); print(",");
-                print("\n");
-                
-                
-                //code pulled from process_packet()
-                if (1) { 
-                    fd.command_used_number = 0;
-                    if (fd.armed == 5) {fd.armed = 3;} //lost communication, no longer!
-                    if (fd.tx_values[tx_throttle] < MIN_SAFETY) {
-                        fd.roll.zero(); fd.pitch.zero(); fd.yaw.zero(); //0 integral error
-                        if (fd.tx_values[tx_yaw] > MAX_SAFETY && fd.armed == 1) { // enable flying (arm it) when yaw-> throttle==min.
-                            fd.armed = 3; //armed=3 means ready to fly
-                            fd.user_feedback_i = fd.user_feedback_m = 0; //clear any user feedback.
-                            print("armed\n");
-                        }
-                        if (fd.tx_values[tx_yaw] > MAX_SAFETY) fd.armed |= 1;
-                        if (fd.tx_values[tx_yaw] < MIN_SAFETY)  {  //disarm when yaw
-                            print("DIS-armed\n");
-                            fd.armed = 0;
-                            zero_motors_and_servos();
-                        }
-                        if ((fd.tx_values[tx_yaw] < MIN_SAFETY) && (fd.tx_values[tx_roll] > MAX_SAFETY) && (fd.tx_values[tx_pitch] < MIN_SAFETY))
-                        { fd.please_update_sensors = 1; } //zero sensors.
+        //if we haven't gotten xbee data in the last 200ms OR if we're holding down the trainer button (and still getting xbee data)
+        if ( !((fd.t_current - fd.last_t_xbee_packet) < 200) || (fd.last_tx_metadata && ((fd.t_current-fd.last_t_xbee_packet)<200))) {
+            if ((fd.t_current-last_comm) >= 50) { //only update every 50ms.
+                unsigned long timing_array[8] = {0};
+                uint8_t resets = get_ppm_timings(timing_array);
+                if ((resets != old_resets)&&(resets >= 0)&&(timing_array[0] != 0)) {
+                    old_resets = resets;
+                    print("2.4ghz data\n");
+                    fd.last_t_24ghz_packet = fd.t_current; //mark when this packet was recieved
+                    
+                    const int16_t min_scl[] = {3679,3583,3677,2534};
+                    const int16_t max_scl[] = {2494,2632,2365,3665};
+                    uint16_t rx[4];
+                    for (uint8_t i = 0; i<4; i++) {
+                        rx[i] = limit(map(timing_array[i],min_scl[i],max_scl[i],MIN_CONTROL,MAX_CONTROL), MIN_CONTROL,MAX_CONTROL);
                     }
-                }
-                led_clk_scl = 2; //change LED fade speed to be slower.
-            } else { led_clk_scl = 4; }
-            last_comm = t_current;
+                    
+                    //if you're holding the button and we've gotten 2.4ghz data in the last 100ms
+
+                    fd.process_analogs( rx[tx_roll], rx[tx_pitch], rx[tx_yaw], rx[tx_throttle]);
+                    
+                    led_clk_scl = 2; //change LED fade speed to be slower.
+                } else { led_clk_scl = 4; }
+                last_comm = fd.t_current;
+            }
         }
 
-        
-        //PORTD = (i%300 > 100)? (PORTD|(1<<6)) : (PORTD & ~(1<<6));
-        #define pwm_steps 20
-        if (((t_current >> led_clk_scl)/pwm_steps)%2) FakePWM0(6,(((t_current >> led_clk_scl))%pwm_steps),pwm_steps,t_tics); //fade in
-        else FakePWM0(6,pwm_steps-(((t_current >> led_clk_scl))%pwm_steps),pwm_steps,t_tics); //fade out
-        
+        if (fd.last_tx_metadata) {
+            PORTD &= ~(1<<6);
+        }
+        else {
+            //PORTD = (i%300 > 100)? (PORTD|(1<<6)) : (PORTD & ~(1<<6));
+            #define pwm_steps 20
+            if (((fd.t_current >> led_clk_scl)/pwm_steps)%2) FakePWM0(6,(((fd.t_current >> led_clk_scl))%pwm_steps),pwm_steps,t_tics); //fade in
+            else FakePWM0(6,pwm_steps-(((fd.t_current >> led_clk_scl))%pwm_steps),pwm_steps,t_tics); //fade out
+        }
         /* ---- Control System ---- */
-        if ((t_current-last_sensors) >= 5) { //only update every 5ms.
+        if ((fd.t_current-last_sensors) >= 5) { //only update every 5ms.
             unsigned char data_type = update_wii_data(&sensor_vals, &fd.zero_data);
             if (data_type == 1){
                 //pitch_offset =  (-(float)(fd.tx_values[tx_pitch]-1500)-(float)sensor_vals.pitch) * 380.00 / 1500.00;
@@ -152,9 +139,15 @@ int main(void)
                     printNumber(OCR1A,DEC); print(",");
                     printNumber(OCR1B,DEC); print(",");
                     printNumber(OCR1C,DEC); print(",");
-                    printNumber(OCR3A,DEC); print("\n");
+                    printNumber(OCR3A,DEC); print(" ");
+                    print("tx: r"); 
+                    printNumber(fd.tx_values[tx_roll],DEC); print(" p");
+                    printNumber(fd.tx_values[tx_pitch],DEC); print(" y");
+                    printNumber(fd.tx_values[tx_yaw],DEC); print(" t");
+                    printNumber(fd.tx_values[tx_throttle],DEC); print("\n");
                 }
             }
+            
             /* ---- Motor Control ---- */
             if (fd.armed >= 3){
                 if (fd.config.flying_mode == PLUS_MODE){
@@ -233,7 +226,7 @@ int main(void)
                 fd.command_used_number++;
             }
             i+=5;
-            last_sensors = t_current;
+            last_sensors = fd.t_current;
         }
 
         
@@ -247,7 +240,6 @@ int main(void)
     }
     return 0;
 }
-
 
 void process_packet( uint8_t * packet, FlightData * fd ) {
     if (packet[3] == 0x88) { //AT Command Response
@@ -269,40 +261,27 @@ void process_packet( uint8_t * packet, FlightData * fd ) {
         //xbee_receive_packet_t* cmdrx = (xbee_receive_packet_t *) &(packet[3]);
         xbee_pkt_tx_t* txp = (xbee_pkt_tx_t*) &(packet[15]); //assume it's a TX packet
         if (txp->type == XBEE_PKT_TX) {
-            int16_t*values = txp->vals;
-            fd->tx_values[tx_roll]  = (values[0]-1500)*4/fd->config.pitch_roll_tx_scale+1500;
-            fd->tx_values[tx_pitch] = (values[1]-1500)*4/fd->config.pitch_roll_tx_scale+1500;
-            fd->tx_values[tx_yaw]   = (values[2]-1500)*4/fd->config.yaw_tx_scale+1500;
-            fd->tx_values[tx_throttle] = values[3];
+            fd->last_tx_metadata = txp->meta;
             
+            //if you're holding the button and we've gotten 2.4ghz data in the last 100ms
+            if ((fd->last_tx_metadata) && ((fd->t_current - fd->last_t_24ghz_packet) < 100)) {} //then do nothing
+            else { print("xbee data\n"); fd->process_analogs( txp->vals[0],txp->vals[1],txp->vals[2],txp->vals[3]); } //otherwise use these values.
             
-            fd->command_used_number = 0;
+            //measure the last recieved communication
+            fd->last_t_xbee_packet = fd->t_current; //mark when this packet was recieved
             
-            if (fd->armed == 5) //lost communication, no longer!
-            {fd->armed = 3;}
-            
-            if (fd->tx_values[tx_throttle] < MIN_SAFETY) {
-                fd->roll.zero(); //zero the integral error
-                fd->pitch.zero(); //zero the integral error
-                fd->yaw.zero(); //zero the integral error
-                
-                // enable flying (arm it) when yaw-> throttle==min.
-                if (values[2] > MAX_SAFETY && fd->armed == 1) {
-                    fd->armed = 3; //armed=3 means ready to fly
-                    fd->user_feedback_i = fd->user_feedback_m = 0; //clear any user feedback.
-                    //if (fd->telem_mode) rprintf("armed\n");
+            //measure average packet period
+            uint16_t dt = (fd->t_current - fd->RxQuality.lastReset);
+            if (!(fd->RxQuality.packetCount++)) { fd->RxQuality.lastReset = fd->t_current; }
+            else if (dt > 5000) { //every 5 seconds gather stats
+                char msg[70] = { XBEE_PKT_TEXT };
+                tfp_sprintf(msg+1,(char*)"avrage dt/tx = %d ms\n",dt/fd->RxQuality.packetCount);
+                for (uint8_t i=0; i < strlen(msg+1); i++) {
+                    usb_debug_putchar( msg[1+i] );
                 }
-                //armed=1 means we've gotten one packet with yaw>MINCHECK
-                if (values[2] > MAX_SAFETY) fd->armed |= 1;
-                
-                if (values[2] < MIN_SAFETY)  {  //disarm when yaw
-                    fd->armed = 0;
-                    if (fd->config.flying_mode == TRICOPTER_MODE) write_motors(SERVO_MID,SERVO_MIN,SERVO_MIN,SERVO_MIN);
-                    else write_motors_zero();
-                }
-                
-                if ((values[2] < MIN_SAFETY) && (values[0] > MAX_SAFETY) && (values[1] < MIN_SAFETY))
-                { fd->please_update_sensors = 1; } //zero sensors.
+                xbee_api_transmit_request( 0x13a200, 0x403D693F, 3, 1, 0, 0, (uint8_t*)msg, strlen(msg+1)+1);
+                fd->RxQuality.packetCount = 0;
+                fd->RxQuality.lastReset = fd->t_current;
             }
         }
     }
@@ -317,6 +296,7 @@ void process_packet( uint8_t * packet, FlightData * fd ) {
         print("\n"); 
     }
 }
+
 
 int16_t limit(int16_t in, int16_t bottom, int16_t upper){
 	if (in<bottom) return bottom;
