@@ -84,7 +84,8 @@ void ppm_timing_read_init(void) {
 	PCMSK0 |= (1 << PCINT4); //enable port 8's interrupt spesifically
 	PCICR |= (1 << PCIE0);  //Any change on any enabled PCINT7..0 pin will cause an interrupt now.
     
-    DDRF |= (1<<6); //port F6 as output.
+    DDRB &= ~(1<<4); //port B4 as input
+    PORTB |= (1<<4); //port B4 as pulled high
 }
 
 
