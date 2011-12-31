@@ -27,7 +27,7 @@ long map(long x, long in_min, long in_max, long out_min, long out_max);
 #define FakePWM0(port,val,period,incrcng_cntr) PORTD = ((incrcng_cntr %(period))>(val)) ? (PORTD|(1<<(port))) : (PORTD&~(1<<(port)))
 
 #define zero_motors_and_servos() {\
-if (fd.config.flying_mode == TRICOPTER_MODE) { write_motors(SERVO_MID,SERVO_MIN,SERVO_MIN,SERVO_MIN); } \
+if (fd.config.flying_mode == TRICOPTER_MODE) { write_motors(SERVO_MIN,SERVO_MID,SERVO_MIN,SERVO_MIN); } \
 else if (fd.config.flying_mode == TWINCOPTER_MODE) { write_motors(SERVO_MID,SERVO_MIN,SERVO_MID,SERVO_MIN); }\
 else { write_motors_zero(); } }
 
@@ -53,7 +53,7 @@ int main(void)
     /*--setup data storage--*/
     FlightData fd;  //create the control and settings object. the constructor fills in defaults
     //fd.load_from_eeprom(); //pulls stored values from eeprom
-    fd.config.flying_mode = X_MODE; //TEMPORARY!!!
+    fd.config.flying_mode = TRICOPTER_MODE; //TEMPORARY!!!
     zero_motors_and_servos();
     
     fd.pitch.p = fd.roll.p = 300;
@@ -61,7 +61,8 @@ int main(void)
     fd.yaw.p = 900;
 
     
-	short pitch_offset = 0,roll_offset = 0,yaw_offset = 0;
+	short pitch_offset = 0,roll_offset = 0,yaw_offset = 0, throttle_offset = 0;
+    int32_t alt_error = 0;
     unsigned char packet[128] = "";
     unsigned char packet_position = 0;
     unsigned long i = 0;
@@ -83,8 +84,11 @@ int main(void)
         if ( !((fd.t_current - fd.last_t_xbee_packet) < 200) || (fd.last_tx_metadata && ((fd.t_current-fd.last_t_xbee_packet)<200))) {
             if ((fd.t_current-last_comm) >= 50) { //only update every 50ms.
                 unsigned long timing_array[8] = {0};
-                uint8_t resets = get_ppm_timings(timing_array);
-                if ((resets != old_resets)&&(resets >= 0)&&(timing_array[0] != 0)) {
+                int8_t resets = get_ppm_timings(timing_array);
+//                if (resets == -2) {
+//                    print("sonar: "); printNumber(timing_array[0],DEC); print("\n");
+//                }else 
+                if ((resets != old_resets)&&(timing_array[0] != 0)) {
                     old_resets = resets;
                     print("2.4ghz data\n");
                     fd.last_t_24ghz_packet = fd.t_current; //mark when this packet was recieved
@@ -148,6 +152,29 @@ int main(void)
                 }
             }
             
+            //altitude control mode
+            /*if ((i%50==0) && fd.tx_metadata) {  
+                unsigned long timing_array[8] = {0};
+                int8_t resets = get_ppm_timings(timing_array);
+                if (resets == -2) { //the sonar module is actually plugged in
+                    int16_t current_alt = timing_array[0]>>3;
+                    if (!fd.last_tx_metadata) { //leading edge triggered, set target altitude to this.
+                        fd.target_alt = current_alt;
+                        alt_error = 0;
+                        fd.last_tx_metadata = 1;
+                        print("target alt: "); printNumber( fd.target_alt ,DEC); print("\n");
+                    }
+                    //control system:
+                    int16_t error = limit( (fd.target_alt - current_alt), -60,60);
+                    alt_error = limit(alt_error + error, -100, 100);
+                    throttle_offset = 0.4*error;// + 10*(error - fd.last_alt_error);// + 0.05*alt_error;
+                    fd.last_alt_error = error;
+                    print("alt-offset: "); printNumber( throttle_offset ,DEC); 
+                    print(" (at "); printNumber( current_alt ,DEC); print(") \n");
+                }
+            } else if (!fd.tx_metadata) { throttle_offset = 0; }*/
+
+            
             /* ---- Motor Control ---- */
             if (fd.armed >= 3){
                 if (fd.config.flying_mode == PLUS_MODE){
@@ -158,20 +185,20 @@ int main(void)
                     write_servo(3, fd.tx_values[tx_throttle] - roll_offset + yaw_offset);  //right (left top port)
                 }
                 else if (fd.config.flying_mode == X_MODE){
-                    write_servo(0, fd.tx_values[tx_throttle] - pitch_offset + roll_offset + yaw_offset); //Right/Rear
-                    write_servo(1, fd.tx_values[tx_throttle] + pitch_offset + roll_offset - yaw_offset); //Right/Front
-                    write_servo(2, fd.tx_values[tx_throttle] - pitch_offset - roll_offset - yaw_offset); //Left/Rear
-                    write_servo(3, fd.tx_values[tx_throttle] + pitch_offset - roll_offset + yaw_offset); //Left/Front
+                    write_servo(0, fd.tx_values[tx_throttle] + throttle_offset - pitch_offset + roll_offset + yaw_offset); //Right/Rear
+                    write_servo(1, fd.tx_values[tx_throttle] + throttle_offset + pitch_offset + roll_offset - yaw_offset); //Right/Front
+                    write_servo(2, fd.tx_values[tx_throttle] + throttle_offset - pitch_offset - roll_offset - yaw_offset); //Left/Rear
+                    write_servo(3, fd.tx_values[tx_throttle] + throttle_offset + pitch_offset - roll_offset + yaw_offset); //Left/Front
                 }
                 /*right bottom port
                  right top port   
                  left bottom port 
                  left top port    */
                 else if (fd.config.flying_mode == TRICOPTER_MODE){
-                    write_servo(0, 1500 - yaw_offset); //servo
-                    write_servo(1, fd.tx_values[tx_throttle] - pitch_offset); //Back
-                    write_servo(2, fd.tx_values[tx_throttle] + pitch_offset/2 - roll_offset ); //left
-                    write_servo(3, fd.tx_values[tx_throttle] + pitch_offset/2 + roll_offset ); //right
+                    write_servo(0, fd.tx_values[tx_throttle] + pitch_offset/2 + roll_offset ); //right
+                    write_servo(1, 1500 + (fd.tx_values[tx_yaw] - (sensor_vals.yaw/2+1500))/2 ); //servo
+                    write_servo(2, fd.tx_values[tx_throttle] - pitch_offset); //Back
+                    write_servo(3, fd.tx_values[tx_throttle] + pitch_offset/2 - roll_offset ); //left
                 }
                 //pitch down, roll right, yaw right (looking from above) are all positive offset.
                 else if (fd.config.flying_mode == TWINCOPTER_MODE){
@@ -261,11 +288,12 @@ void process_packet( uint8_t * packet, FlightData * fd ) {
         //xbee_receive_packet_t* cmdrx = (xbee_receive_packet_t *) &(packet[3]);
         xbee_pkt_tx_t* txp = (xbee_pkt_tx_t*) &(packet[15]); //assume it's a TX packet
         if (txp->type == XBEE_PKT_TX) {
-            fd->last_tx_metadata = txp->meta;
+            fd->last_tx_metadata = fd->tx_metadata;
+            fd->tx_metadata = txp->meta;
             
             //if you're holding the button and we've gotten 2.4ghz data in the last 100ms
             if ((fd->last_tx_metadata) && ((fd->t_current - fd->last_t_24ghz_packet) < 100)) {} //then do nothing
-            else { print("xbee data\n"); fd->process_analogs( txp->vals[0],txp->vals[1],txp->vals[2],txp->vals[3]); } //otherwise use these values.
+            else { fd->process_analogs( txp->vals[0],txp->vals[1],txp->vals[2],txp->vals[3]); } //otherwise use these values.
             
             //measure the last recieved communication
             fd->last_t_xbee_packet = fd->t_current; //mark when this packet was recieved

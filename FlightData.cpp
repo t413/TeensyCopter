@@ -76,9 +76,9 @@ void FlightData::load_from_eeprom( void ){
     yaw.p = EEPROM_read_16(12);
     yaw.i = EEPROM_read_16(14);
     yaw.d = EEPROM_read_16(16);
-    alt.p = EEPROM_read_16(18); //added altitude pid
-    alt.i = EEPROM_read_16(20);
-    alt.d = EEPROM_read_16(22);
+    //alt.p = EEPROM_read_16(18); //added altitude pid
+    //alt.i = EEPROM_read_16(20);
+    //alt.d = EEPROM_read_16(22);
     
     config.flying_mode = (FlyingMode)EEPROM_read(24); //X_MODE or PLUS_MODE
     config.led_mode = EEPROM_read(25); 
@@ -103,9 +103,9 @@ void FlightData::store_to_eeprom( void ){
     EEPROM_write_16(12, yaw.p);
     EEPROM_write_16(14, yaw.i);
     EEPROM_write_16(16, yaw.d);
-    EEPROM_write_16(18, alt.p);
-    EEPROM_write_16(20, alt.i);
-    EEPROM_write_16(22, alt.d);
+    //EEPROM_write_16(18, alt.p);
+    //EEPROM_write_16(20, alt.i);
+    //EEPROM_write_16(22, alt.d);
     
     EEPROM_write(24, config.flying_mode); //X_MODE or PLUS_MODE
     EEPROM_write(25, config.led_mode); 

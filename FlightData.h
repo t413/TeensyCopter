@@ -43,7 +43,7 @@ public:
     
     int16_t tx_values[4]; //holds processed transmitter values.
     uint32_t last_t_xbee_packet, last_t_24ghz_packet; //times of last successful packet recieve
-    uint8_t  last_tx_metadata;
+    uint8_t  tx_metadata, last_tx_metadata;
     struct {
         uint32_t lastReset;
         uint16_t packetCount;
@@ -54,7 +54,8 @@ public:
     uint16_t user_feedback_m;
     uint16_t user_feedback_i;
     
-    PID pitch, roll, yaw, alt;
+    PID pitch, roll, yaw; //, alt;
+    uint16_t target_alt, last_alt_error;
     struct {
         FlyingMode flying_mode; //X_MODE or PLUS_MODE
         uint8_t led_mode;
