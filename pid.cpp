@@ -23,6 +23,7 @@ PID::PID(void) {
     p = 0;
     i = 0;
     d = 0;
+    i_limit = 200;
 }
 
 int16_t PID::update(int16_t incoming_val, int16_t goal_val){

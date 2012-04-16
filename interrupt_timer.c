@@ -36,13 +36,16 @@ void timer0_init(void){
     TCCR0B = (1<<CS01); //now is's clk/8..  | (1<<CS00); //sets prescale to clk/64
 	
     TIMSK0 = (1<<TOIE0); //Timer/Counter0 Overflow interrupt is enabled (overflow in Timer/Counter0 == inturrupt)
+    
+    //    DDRF |= (1<<6); //debug output on Port F6
+    //    if (PORTF & (1<<6)) { PORTF &= ~(1<<6); } //off
+    //    else { PORTF |= (1<<6); } //on
 }
 
 ISR(TIMER0_OVF_vect)
 {
+    //this inturrupt is triggered every 0.128 ms
 	timer0_overflow_count++;
-    if (PORTF & (1<<6)) { PORTF &= ~(1<<6); } //off
-    else { PORTF |= (1<<6); } //on
 }
 
 unsigned long tics(void) {
@@ -70,7 +73,7 @@ unsigned long millis(void) {
 volatile unsigned long pulse_start_ms;  // saves start of pulse
 volatile unsigned char pulse_start_t0;
 
-#define NUM_CHANNELS_TO_RECIEVE 6
+#define NUM_CHANNELS_TO_RECIEVE 9
 volatile unsigned long timings[NUM_CHANNELS_TO_RECIEVE];
 volatile signed char position = -1;
 volatile uint8_t resets = 0;
@@ -96,12 +99,29 @@ void ppm_timing_read_init(void) {
  * enabled by PCICR with individual ports enabled with PCMSK0
  */
 ISR(PCINT0_vect) {
-    if ( !(PINB & (1<<4))) {  // Pulse trailing edge for port B pin 4, B4. CHANGE ME if you change ports.
+    
+    //Sonar mode measurement to timings[0]
+    /*if (position == -2) {
+     if (PINB & (1<<4)) { //start of the pulse
+     pulse_start_ms = timer0_overflow_count;
+     pulse_start_t0 = TCNT0;
+     }
+     else { //end of the pulse.
+     timings[0] = ((timer0_overflow_count<<8)|TCNT0) - ((pulse_start_ms<<8) | pulse_start_t0);
+     resets += 1;
+     }
+     }*/
+    
+    //PPM input reading to timings[] array
+    /*else*/ if ( !(PINB & (1<<4))) {  // Pulse trailing edge for port B pin 4, B4. CHANGE ME if you change ports.
         unsigned long m = timer0_overflow_count;
         unsigned char t0 = TCNT0;
         
         if ((TIFR0 & _BV(TOV0)) && (t0 < 255)) { m++; } //fixes strange error, thanks arduino core's micros()!
-
+        
+        //        if (((m - pulse_start_ms) > (300)) && ((m - pulse_start_ms) < (450))) {  //sonar mode!
+        //            position = -2; return;
+        //        } else
         if ((m - pulse_start_ms) > (30)) {  //found sync pulse! TODO: change '30' to be dependent on REAL_TIMER_FREQ
             position = 0; 
             resets += 1;
@@ -121,7 +141,12 @@ ISR(PCINT0_vect) {
 
 int8_t get_ppm_timings(unsigned long * timing_array) {
 	cli();
-    if (position < 0) { sei(); return -1; }
+    if (position == -2) { //Sonar was measured..
+        timing_array[0] = timings[0];
+        sei();
+        return -2;
+    }
+    else if (position < 0) { sei(); return -1; }
 	for (int i=0; i<8; i++) {
         timing_array[i] = timings[i];
     }

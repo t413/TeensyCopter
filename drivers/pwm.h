@@ -12,21 +12,24 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-//used to write to the output
+    
+    //used to write to the output
 #define SERVO_MIN 2000
 #define SERVO_MAX 4000
 #define SERVO_MID 3000
 #define SERVO_Notif 2300
-
     
-void pwm_init(void);
-void write_servo(uint8_t which, uint16_t in_val);
-void write_motors(uint16_t m0, uint16_t m1, uint16_t m2, uint16_t m3);
+    
+    void pwm_init(void);
+    void write_servo(uint8_t which, uint16_t in_val);
+    void write_motors(uint16_t m0, uint16_t m1, uint16_t m2, uint16_t m3);
+    
+    void enableFastPWMforServos0_1_2(void);
+    void enableFastPWMforServos3(void);
     
 #define write_motors_zero() write_motors(SERVO_MIN,SERVO_MIN,SERVO_MIN,SERVO_MIN)
-
-
+    
+    
     
     
 #ifdef __cplusplus

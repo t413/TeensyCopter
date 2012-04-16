@@ -9,7 +9,7 @@
 /* ---- constructor ---- */
 FlightData::FlightData( void ){
     armed = 0;
-        
+    
     SENSOR_DATA zd = {0}; //make a temporary zeroed version
     zero_data = zd; //copy it.
     
@@ -18,6 +18,7 @@ FlightData::FlightData( void ){
     }
     tx_values[tx_throttle] = MIN_CONTROL;
     
+    tri_servo_center = 1500;
     command_used_number = 0;
     please_update_sensors = 0;
     user_feedback_i = user_feedback_m = 0;
@@ -31,9 +32,9 @@ FlightData::FlightData( void ){
 
 void FlightData::process_analogs( int16_t inroll, int16_t inpitch, int16_t inyaw, int16_t inthrottle) {
     
-    tx_values[tx_roll]  = inroll;//(roll -1500)*4/config.pitch_roll_tx_scale+1500;
-    tx_values[tx_pitch] = inpitch;//(pitch-1500)*4/config.pitch_roll_tx_scale+1500;
-    tx_values[tx_yaw]   = inyaw;//(yaw  -1500)*4/config.yaw_tx_scale+1500;
+    tx_values[tx_roll]  = (inroll -1500)*4/config.pitch_roll_tx_scale+1500;
+    tx_values[tx_pitch] = (inpitch-1500)*4/config.pitch_roll_tx_scale+1500;
+    tx_values[tx_yaw]   = (inyaw  -1500)*4/config.yaw_tx_scale+1500;
     tx_values[tx_throttle] = inthrottle;
     
     command_used_number = 0;
@@ -81,13 +82,14 @@ void FlightData::load_from_eeprom( void ){
     //alt.d = EEPROM_read_16(22);
     
     config.flying_mode = (FlyingMode)EEPROM_read(24); //X_MODE or PLUS_MODE
-    config.led_mode = EEPROM_read(25); 
     config.pitch_roll_tx_scale = EEPROM_read_16(26);
     config.yaw_tx_scale = EEPROM_read_16(28);
     
     zero_data.pitch = EEPROM_read_16(30);
     zero_data.roll = EEPROM_read_16(32);
     zero_data.yaw = EEPROM_read_16(34);
+    
+    config.led_mode = EEPROM_read_16(36); 
     sei(); //re-enable interrupts
 }
 
@@ -108,17 +110,18 @@ void FlightData::store_to_eeprom( void ){
     //EEPROM_write_16(22, alt.d);
     
     EEPROM_write(24, config.flying_mode); //X_MODE or PLUS_MODE
-    EEPROM_write(25, config.led_mode); 
     EEPROM_write_16(26, config.pitch_roll_tx_scale);
     EEPROM_write_16(28, config.yaw_tx_scale);
+    
+    EEPROM_write_16(36, config.led_mode); 
     sei(); //re-enable interrupts
 }
- 
- void FlightData::store_eeprom_zero_data( void ){
-     cli(); //turn off interrupts
-     EEPROM_write_16(30, zero_data.pitch );
-     EEPROM_write_16(32, zero_data.roll );
-     EEPROM_write_16(34, zero_data.yaw );
-     sei(); //re-enable interrupts
- }
- 
+
+void FlightData::store_eeprom_zero_data( void ){
+    cli(); //turn off interrupts
+    EEPROM_write_16(30, zero_data.pitch );
+    EEPROM_write_16(32, zero_data.roll );
+    EEPROM_write_16(34, zero_data.yaw );
+    sei(); //re-enable interrupts
+}
+

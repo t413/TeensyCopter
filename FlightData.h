@@ -56,9 +56,10 @@ public:
     
     PID pitch, roll, yaw; //, alt;
     uint16_t target_alt, last_alt_error;
+    uint16_t tri_servo_center;
     struct {
         FlyingMode flying_mode; //X_MODE or PLUS_MODE
-        uint8_t led_mode;
+        int16_t led_mode;
         int16_t pitch_roll_tx_scale;
         int16_t yaw_tx_scale;
     } config;
